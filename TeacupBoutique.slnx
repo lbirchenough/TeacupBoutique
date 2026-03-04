@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/gateway/gateway.csproj" />
+  </Folder>
+  <Folder Name="/src/services/">
+    <Project Path="src/services/auth/auth.csproj" />
+  </Folder>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
+</Solution>

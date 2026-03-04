@@ -1,0 +1,33 @@
+services:
+  gateway:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ReverseProxy__Clusters__auth-cluster__Destinations__destination1__Address=http://auth:8080/
+    ports:
+      - "5054:8080"
+    depends_on:
+          - auth
+  auth:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+    env_file:
+      - ./.secrets/auth.env
+    ports:
+      - "5194:8080"
+  sql-auth:
+      image: mcr.microsoft.com/mssql/server:2022-latest
+      #container_name: sql
+      environment:
+        ACCEPT_EULA: "Y"
+      env_file:
+      - ./.secrets/sql-auth.env
+      # platform: "linux/amd64" for emulation on arm
+      ports:
+        - "1433:1433"
+      volumes:
+        - sql-auth-data:/var/opt/mssql
+
+volumes:
+  sql-auth-data:

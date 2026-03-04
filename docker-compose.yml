@@ -1,0 +1,13 @@
+services:
+  gateway:
+    image: ${DOCKER_REGISTRY-}gateway
+    build:
+      context: .
+      dockerfile: src/gateway/Dockerfile
+
+  auth:
+    image: ${DOCKER_REGISTRY-}auth
+    build:
+      context: .
+      dockerfile: src/services/auth/Dockerfile
+
