@@ -1,21 +1,5 @@
 services:
-  gateway:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-      - ReverseProxy__Clusters__auth-cluster__Destinations__destination1__Address=http://auth:8080/
-    ports:
-      - "5054:8080"
-    depends_on:
-          - auth
-  auth:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-    env_file:
-      - ./.secrets/auth.env
-    ports:
-      - "5194:8080"
+  
   sql-auth:
       image: mcr.microsoft.com/mssql/server:2022-latest
       #container_name: sql
@@ -52,6 +36,16 @@ services:
         - "1435:1433"
       volumes:
         - sql-orders-data:/var/opt/mssql
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    # default login guest/guest (only from localhost). For other hosts use env below:
+    # environment:
+    #   RABBITMQ_DEFAULT_USER: teapot
+    #   RABBITMQ_DEFAULT_PASS: yourpassword
 
 volumes:
   sql-auth-data:

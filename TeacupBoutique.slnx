@@ -4,6 +4,8 @@
   </Folder>
   <Folder Name="/src/services/">
     <Project Path="src/services/auth/auth.csproj" />
+    <Project Path="src/services/inventory/inventory.csproj" />
+    <Project Path="src/services/orders/orders.csproj" />
   </Folder>
   <Project Path="docker-compose.dcproj">
     <Build />
