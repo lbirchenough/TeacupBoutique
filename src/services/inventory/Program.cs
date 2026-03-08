@@ -7,7 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddHostedService<HelloQueueConsumer>();
+//builder.Services.AddHostedService<HelloQueueConsumer>();
+builder.Services.AddHostedService<OrderPlacedConsumer>();
 
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<InventoryDbContext>(opt =>

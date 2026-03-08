@@ -22,7 +22,7 @@ public class CreateOrderDto
     public DateOnly PickupDate { get; set; }
     public DateOnly ReturnDate { get; set; }
 
-    public DateOnly? EventDate { get; set; }
+    public DateOnly ReservationDate { get; set; }
 
     [MaxLength(100)]
     public string? EventType { get; set; }

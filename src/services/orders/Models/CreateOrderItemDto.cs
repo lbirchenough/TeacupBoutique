@@ -9,7 +9,7 @@ public class CreateOrderItemDto
     public DateOnly RentalDate { get; set; }
 
     [MaxLength(200)]
-    public string? ProductName { get; set; }
+    public required string ProductName { get; set; }
 
     [MaxLength(100)]
     public string? ProductThemeColor { get; set; }

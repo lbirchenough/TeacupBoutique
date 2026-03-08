@@ -6,19 +6,19 @@ public class OrderItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public int Quantity { get; set; } = 1;
-    public DateOnly RentalDate { get; set; }
+    public DateOnly ReservationDate { get; set; }
     public Guid ProductId { get; set; }
 
     // Denormalized snapshot at order time
-    public string? ProductName { get; set; }
-    public string? ProductThemeColor { get; set; }
-    public string? ProductImageUrl { get; set; }
+    public required string Name { get; set; }
+    public string? Colour { get; set; }
+    public string? ImageUrl { get; set; }
 
     [Column(TypeName = "decimal(10,2)")]
-    public decimal PricePerDay { get; set; }
+    public decimal UnitPrice { get; set; }
 
     [Column(TypeName = "decimal(10,2)")]
-    public decimal Subtotal { get; set; }
+    public decimal Total { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

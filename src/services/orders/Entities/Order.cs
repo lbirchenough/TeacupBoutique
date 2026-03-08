@@ -43,15 +43,16 @@ public class Order
     [Column(TypeName = "decimal(10,2)")]
     public decimal Total { get; set; }
 
-    // Pickup only
+    // Dates related to order fulfillment
     public DateOnly PickupDate { get; set; }
     public DateOnly ReturnDate { get; set; }
+    public DateOnly ReservationDate { get; set; }
 
     // Event details
-    public DateOnly? EventDate { get; set; }
-    public string? EventType { get; set; }
-    public int? GuestCount { get; set; }
-    public string? SpecialRequests { get; set; }
+    
+    // public string? EventType { get; set; }
+    // public int? GuestCount { get; set; }
+    // public string? SpecialRequests { get; set; }
 
     public PaymentStatus? PaymentStatus { get; set; }
     public Guid? PaymentId { get; set; }
