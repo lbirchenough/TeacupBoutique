@@ -5,8 +5,10 @@ namespace orders.Entities;
 public enum OrderStatus
 {
     Pending,
+    AwaitingPayment,
     Confirmed,
-    Completed
+    Completed,
+    Cancelled,
 }
 
 public enum PaymentStatus

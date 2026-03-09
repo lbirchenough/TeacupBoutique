@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { inventoryApi } from '../lib/inventoryApi'
 import { ProductForm } from '../components/ProductForm'
 import { InventoryItemRow } from '../components/InventoryItemRow'
+import { cartStore } from '../lib/cartStore'
 import type { InventoryItem, InventoryItemUpdateDto, ProductDetail, ProductUpdateDto } from '../lib/types'
 
 export const Route = createFileRoute('/products/$productId')({
@@ -78,12 +79,27 @@ function ProductDetailPage() {
                                     {product.isActive ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
-                            <button
-                                onClick={() => setEditingProduct(e => !e)}
-                                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                            >
-                                {editingProduct ? 'Cancel' : 'Edit'}
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => cartStore.addItem({
+                                        productId: product.id,
+                                        name: product.name,
+                                        pricePerDay: product.price,
+                                        quantity: 1,
+                                        colour: product.colour,
+                                        imageUrl: product.photos?.find(p => p.isFeatured)?.url,
+                                    })}
+                                    className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                                >
+                                    Add to Cart
+                                </button>
+                                <button
+                                    onClick={() => setEditingProduct(e => !e)}
+                                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                >
+                                    {editingProduct ? 'Cancel' : 'Edit'}
+                                </button>
+                            </div>
                         </div>
 
                         {editingProduct ? (

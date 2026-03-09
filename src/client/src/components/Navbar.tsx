@@ -2,10 +2,12 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import { authApi } from '../lib/api'
 import { useAuth } from '../lib/useAuth'
+import { useCart } from '../lib/useCart'
 
 export function Navbar() {
   const navigate = useNavigate()
   const { isLoggedIn, setToken } = useAuth()
+  const { count } = useCart()
 
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
@@ -45,6 +47,17 @@ export function Navbar() {
               className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >
               Products
+            </Link>
+            <Link
+              to="/cart"
+              className="relative text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Cart
+              {count > 0 && (
+                <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {count}
+                </span>
+              )}
             </Link>
             {!isLoggedIn && (
               <>

@@ -97,7 +97,7 @@ namespace orders.Migrations
                     b.HasIndex("OrderNumber")
                         .IsUnique();
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("orders.Entities.OrderItem", b =>
@@ -141,7 +141,7 @@ namespace orders.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", (string)null);
                 });
 
             modelBuilder.Entity("orders.Entities.OrderItem", b =>

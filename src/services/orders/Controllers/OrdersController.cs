@@ -4,20 +4,22 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using orders.Data;
 using orders.Entities;
+using orders.Interfaces;
 using orders.Models;
+using orders.Services;
 using RabbitMQ.Client;
 
 namespace orders.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class OrdersController(OrdersDbContext _context) : ControllerBase
+    public class OrdersController(OrdersDbContext _context, IOrderEvent orderEventService) : ControllerBase
     {
         
         [HttpGet]
         public async Task<IActionResult> GetOrders()
         {
-            await PublishOrder();
+            
             var orders = await _context.Orders
                 .Where(x => x.Status != OrderStatus.Completed)
                 //.Include(o => o.OrderItems)
@@ -44,7 +46,7 @@ namespace orders.Controllers
         {
             var order = new Order
             {
-                OrderNumber = $"ORD-{DateTime.UtcNow:yyyy}-{Guid.NewGuid():N}"[..50],
+                OrderNumber = $"ORD-{DateTime.UtcNow:yyyy}-{Guid.NewGuid():N}",
                 UserId = dto.UserId,
                 CustomerName = dto.CustomerName,
                 CustomerEmail = dto.CustomerEmail,
@@ -74,81 +76,11 @@ namespace orders.Controllers
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
-            //await PublishOrder(order);
+            await orderEventService.PublishOrder(order);
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
         }
 
-        public async Task PublishOrder(){
-            var factory = new ConnectionFactory { HostName = "localhost" };
-            using var connection = await factory.CreateConnectionAsync();
-            using var channel = await connection.CreateChannelAsync();
-
-            // await channel.QueueDeclareAsync(queue: "hello", durable: false, exclusive: false, autoDelete: false,
-            //     arguments: null);
-            await channel.ExchangeDeclareAsync(exchange: "commerce.events", type: ExchangeType.Topic);
-            // const string message = "Hello World!";
-            // var body = Encoding.UTF8.GetBytes(message);
-
-            var order = new Order
-            {
-                Id = Guid.NewGuid(),
-                OrderNumber = $"ORD-{DateTime.UtcNow:yyyy}-{Guid.NewGuid():N}",
-                CustomerName = "John Doe",
-                CustomerEmail = "john.doe@example.com",
-                CustomerPhone = "123-456-7890",
-                OrderItems = new List<OrderItem>(),
-            };
-
-            order.OrderItems.Add(new OrderItem
-            {
-                Id = Guid.NewGuid(),
-                ProductId = Guid.NewGuid(),
-                Quantity = 2,
-                ReservationDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
-                Name = "Vintage Teacup Set",
-                Colour = "Floral",
-                ImageUrl = "https://example.com/images/teacup-set.jpg",
-                UnitPrice = 29.99m,
-                Total = 59.98m
-            });
-
-            order.OrderItems.Add(new OrderItem
-            {
-                Id = Guid.NewGuid(),
-                ProductId = Guid.NewGuid(),
-                Quantity = 1,
-                ReservationDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(7)),
-                Name = "Antique Silver Teapot",
-                Colour = "Silver",
-                ImageUrl = "https://example.com/images/silver-teapot.jpg",
-                UnitPrice = 49.99m,
-                Total = 49.99m
-            });
-            
-            var orderPlacedDto = new OrderPlacedDto
-            {
-                OrderId = order.Id,
-                Items = order.OrderItems?.Select(oi => new OrderPlacedItemDto
-                {
-                    ProductId = oi.ProductId,
-                    Quantity = oi.Quantity,
-                    ClaimedPricePerDay = oi.UnitPrice
-                }).ToList() ?? [],
-                ReservationDate = order.PickupDate,
-                PlacedAt = order.CreatedAt
-            };
-
-            var json = JsonSerializer.Serialize(orderPlacedDto);
-            var body = Encoding.UTF8.GetBytes(json);
-
-            //await channel.BasicPublishAsync(exchange: string.Empty, routingKey: "hello", body: body);
-            await channel.BasicPublishAsync(exchange: "commerce.events", routingKey: "commerce.events.OrderPlaced", body: body);
-            
-            Console.WriteLine($" [x] Sent {json}");
-
-        }
-
-
+    
     }
 }
