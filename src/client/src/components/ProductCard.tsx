@@ -13,6 +13,8 @@ export function ProductCard({ product }: Props) {
             productId: product.id,
             name: product.name,
             pricePerDay: product.price,
+            depositAmount: product.depositAmount,
+            servings: product.servings,
             quantity: 1,
             colour: product.colour,
             imageUrl: product.featuredPhotoUrl,
@@ -40,7 +42,12 @@ export function ProductCard({ product }: Props) {
                 <h2 className="font-semibold text-gray-900 truncate">{product.name}</h2>
                 <p className="text-sm text-gray-500 mt-1 line-clamp-2">{product.description}</p>
                 <div className="mt-3 flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">${product.price.toFixed(2)}/day</span>
+                    <div>
+                        <span className="text-sm font-medium text-gray-700">${product.price.toFixed(2)}</span>
+                        {product.servings > 0 && (
+                            <span className="text-xs text-gray-500 ml-2">· serves {product.servings}</span>
+                        )}
+                    </div>
                     {product.colour && (
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                             {product.colour}

@@ -49,6 +49,12 @@ export function Navbar() {
               Products
             </Link>
             <Link
+              to="/availability"
+              className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Availability
+            </Link>
+            <Link
               to="/cart"
               className="relative text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
             >

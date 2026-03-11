@@ -1,4 +1,4 @@
-import type { InventoryItemUpdateDto, ProductCreateDto, ProductUpdateDto } from './types'
+import type { InventoryItemUpdateDto, ProductAvailabilityDto, ProductCreateDto, ProductUpdateDto } from './types'
 
 const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5035'
 
@@ -62,6 +62,11 @@ export const inventoryApi = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dto),
         })
+        return handleResponse(response)
+    },
+
+    getAvailability: async (date: string): Promise<ProductAvailabilityDto[]> => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/availability?date=${date}`)
         return handleResponse(response)
     },
 

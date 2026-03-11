@@ -3,6 +3,7 @@ import type { CartItem } from './types'
 type Listener = () => void
 
 let items: CartItem[] = []
+let reservationDate: string | null = null
 const listeners = new Set<Listener>()
 
 function notify() {
@@ -47,6 +48,16 @@ export const cartStore = {
 
     clear() {
         items = []
+        reservationDate = null
+        notify()
+    },
+
+    getReservationDate() {
+        return reservationDate
+    },
+
+    setReservationDate(date: string | null) {
+        reservationDate = date
         notify()
     },
 

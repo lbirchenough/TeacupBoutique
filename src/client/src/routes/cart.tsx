@@ -12,19 +12,22 @@ export const Route = createFileRoute('/cart')({
 const TAX_RATE = 0.1
 
 function CartPage() {
-    const { items, total, count, removeItem, updateQuantity, clear } = useCart()
+    const { items, total, count, removeItem, updateQuantity, clear, reservationDate: cartDate, setReservationDate } = useCart()
     const navigate = useNavigate()
 
-    const subtotal = total
-    const tax = subtotal * TAX_RATE
-    const grandTotal = subtotal + tax
+    const grandTotal = total  // prices are GST-inclusive
+    const gst = grandTotal * TAX_RATE
+    const exGst = grandTotal - gst
+    const totalDeposit = items.reduce((sum, i) => sum + (i.depositAmount ?? 0) * i.quantity, 0)
+    const totalServings = items.reduce((sum, i) => sum + (i.servings ?? 0) * i.quantity, 0)
 
     const [form, setForm] = useState({
         customerName: '',
         customerEmail: '',
         customerPhone: '',
-        reservationDate: '',
+        reservationDate: cartDate ?? '',
     })
+    const [showDateChangeConfirm, setShowDateChangeConfirm] = useState(false)
 
     const orderMutation = useMutation({
         mutationFn: (dto: CreateOrderRequest) => ordersApi.createOrder(dto),
@@ -45,8 +48,8 @@ function CartPage() {
             reservationDate: form.reservationDate,
             pickupDate: form.reservationDate,
             returnDate: form.reservationDate,
-            subtotal,
-            tax,
+            subtotal: exGst,
+            tax: gst,
             total: grandTotal,
             items: items.map(i => ({
                 productId: i.productId,
@@ -93,7 +96,7 @@ function CartPage() {
                             <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 truncate">{item.name}</p>
                                 {item.colour && <p className="text-xs text-gray-500">{item.colour}</p>}
-                                <p className="text-sm text-gray-600 mt-0.5">${item.pricePerDay.toFixed(2)}/day</p>
+                                <p className="text-sm text-gray-600 mt-0.5">${item.pricePerDay.toFixed(2)}</p>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <p className="font-semibold text-gray-900">
@@ -124,20 +127,38 @@ function CartPage() {
                         </div>
                     ))}
 
+                    {/* Add more items */}
+                    <div className="text-right">
+                        <Link
+                            to="/availability"
+                            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                        >
+                            + Add more items
+                        </Link>
+                    </div>
+
                     {/* Totals */}
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2 text-sm">
-                        <div className="flex justify-between text-gray-600">
-                            <span>Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-600">
-                            <span>Tax (10%)</span>
-                            <span>${tax.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between font-semibold text-gray-900 text-base pt-2 border-t border-gray-200">
+                        {totalServings > 0 && (
+                            <div className="flex justify-between text-indigo-700 font-medium pb-2 border-b border-gray-200">
+                                <span>Serves</span>
+                                <span>{totalServings} people</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between font-semibold text-gray-900 text-base">
                             <span>Total</span>
                             <span>${grandTotal.toFixed(2)}</span>
                         </div>
+                        <div className="flex justify-between text-gray-500 text-xs">
+                            <span>GST included (10%)</span>
+                            <span>${gst.toFixed(2)}</span>
+                        </div>
+                        {totalDeposit > 0 && (
+                            <div className="flex justify-between text-gray-700 font-medium pt-2 border-t border-gray-200">
+                                <span>Security deposit</span>
+                                <span>${totalDeposit.toFixed(2)}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -182,13 +203,48 @@ function CartPage() {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">Reservation Date *</label>
-                            <input
-                                required
-                                type="date"
-                                value={form.reservationDate}
-                                onChange={e => setForm(f => ({ ...f, reservationDate: e.target.value }))}
-                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
+                            {cartDate && !showDateChangeConfirm ? (
+                                <div className="flex items-center gap-2">
+                                    <span className="flex-1 rounded-md border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm text-indigo-800 font-medium">
+                                        {new Date(cartDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowDateChangeConfirm(true)}
+                                        className="text-xs text-gray-400 hover:text-gray-600"
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                            ) : cartDate && showDateChangeConfirm ? (
+                                <div className="rounded-md border border-amber-200 bg-amber-50 p-3 space-y-2">
+                                    <p className="text-xs text-amber-800">This will clear your cart and take you back to the availability page.</p>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDateChangeConfirm(false)}
+                                            className="flex-1 text-xs border border-gray-300 text-gray-700 py-1.5 rounded-md hover:bg-gray-50"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { clear(); navigate({ to: '/availability' }) }}
+                                            className="flex-1 text-xs bg-amber-600 hover:bg-amber-700 text-white py-1.5 rounded-md"
+                                        >
+                                            Yes, clear cart
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <input
+                                    required
+                                    type="date"
+                                    value={form.reservationDate}
+                                    onChange={e => setForm(f => ({ ...f, reservationDate: e.target.value }))}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            )}
                         </div>
 
                         <button

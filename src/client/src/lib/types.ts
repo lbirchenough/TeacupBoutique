@@ -4,6 +4,7 @@ export interface ProductListDto {
     description: string;
     colour?: string | null;
     price: number;
+    depositAmount: number;
     servings: number;
     featuredPhotoUrl?: string | null;
 }
@@ -107,12 +108,26 @@ export interface OrderItemDetail {
     total: number;
 }
 
+// Availability
+export interface ProductAvailabilityDto {
+    productId: string
+    name: string
+    featuredPhotoUrl?: string | null
+    pricePerDay: number
+    depositAmount: number
+    servings: number
+    available: number
+    total: number
+}
+
 // Cart
 export interface CartItem {
     productId: string;
     name: string;
     pricePerDay: number;
+    depositAmount: number;
     quantity: number;
+    servings: number;
     colour?: string | null;
     imageUrl?: string | null;
 }

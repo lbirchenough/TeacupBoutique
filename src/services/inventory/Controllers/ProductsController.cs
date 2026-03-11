@@ -48,6 +48,10 @@ namespace inventory.Controllers
                     Id = p.Id,
                     Name = p.Name,
                     Description = p.Description,
+                    Colour = p.Colour,
+                    Price = p.Price,
+                    DepositAmount = p.DepositAmount,
+                    Servings = p.Servings,
                     FeaturedPhotoUrl = p.Photos
                         .Where(ph => ph.IsFeatured)
                         .Select(ph => ph.Url)
@@ -185,6 +189,60 @@ namespace inventory.Controllers
             _context.InventoryItems.Remove(inventoryItem);
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        [HttpGet("availability")]
+        public async Task<IActionResult> GetAvailability([FromQuery] DateOnly date)
+        {
+            var products = await _context.Products
+                .Where(p => p.IsActive)
+                .Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.Price,
+                    p.DepositAmount,
+                    p.Servings,
+                    FeaturedPhotoUrl = p.Photos
+                        .Where(ph => ph.IsFeatured)
+                        .Select(ph => ph.Url)
+                        .FirstOrDefault()
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            var totals = await _context.InventoryItems
+                .Where(i => i.Status == Status.Available)
+                .GroupBy(i => i.ProductId)
+                .Select(g => new { ProductId = g.Key, Total = g.Count() })
+                .ToListAsync();
+
+            var booked = await _context.BookingItems
+                .Where(bi =>
+                    bi.ReservationDate == date &&
+                    bi.Booking!.Status != BookingStatus.Cancelled)
+                .GroupBy(bi => bi.ProductId)
+                .Select(g => new { ProductId = g.Key, Booked = g.Count() })
+                .ToListAsync();
+
+            var result = products.Select(p =>
+            {
+                int total = totals.FirstOrDefault(t => t.ProductId == p.Id)?.Total ?? 0;
+                int bookedCount = booked.FirstOrDefault(b => b.ProductId == p.Id)?.Booked ?? 0;
+                return new
+                {
+                    productId = p.Id,
+                    name = p.Name,
+                    featuredPhotoUrl = p.FeaturedPhotoUrl,
+                    pricePerDay = p.Price,
+                    depositAmount = p.DepositAmount,
+                    servings = p.Servings,
+                    available = Math.Max(0, total - bookedCount),
+                    total
+                };
+            });
+
+            return Ok(result);
         }
 
         [HttpPost("{productId}/items")]
