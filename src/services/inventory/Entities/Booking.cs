@@ -15,8 +15,8 @@ public enum BookingStatus
 public class Booking
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public int OrderId { get; set; }   
-    public DateTime RentalDate { get; set; }
+    public Guid OrderId { get; set; }
+    public DateOnly ReservationDate { get; set; }
     public BookingStatus Status { get; set; }
     public DateTime ReservedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ConfirmedAt { get; set; }

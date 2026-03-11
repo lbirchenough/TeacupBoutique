@@ -1,8 +1,8 @@
 using System.Text;
-using orders.Interfaces;
+using payments.Interfaces;
 using RabbitMQ.Client;
 
-namespace orders.Services;
+namespace payments.Services;
 
 public class RabbitMqPublisher : IMessagePublisher, IDisposable
 {
@@ -13,17 +13,17 @@ public class RabbitMqPublisher : IMessagePublisher, IDisposable
     {
         var factory = new ConnectionFactory { HostName = config["RabbitMq:Host"] };
         _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        // Declare exchange once at startup and then declare new channels for each publish
         using var setupChannel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
         setupChannel.ExchangeDeclareAsync(exchange: _exchangeName, type: ExchangeType.Topic).GetAwaiter().GetResult();
     }
+
     public async Task PublishAsync(string topic, string message)
     {
-        
         using var channel = await _connection.CreateChannelAsync();
         var body = Encoding.UTF8.GetBytes(message);
         await channel.BasicPublishAsync(exchange: _exchangeName, routingKey: topic, body: body);
-        Console.WriteLine($" [orders] {topic} Sent: {message}");
+        Console.WriteLine($" [payments] {topic} Sent: {message}");
     }
+
     public void Dispose() => _connection?.Dispose();
 }

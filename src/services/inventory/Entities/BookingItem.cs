@@ -12,16 +12,21 @@ public enum ReturnCondition
 public class BookingItem
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public ReturnCondition ReturnCondition { get; set; }
+    public DateOnly ReservationDate { get; set; }
+    public ReturnCondition? ReturnCondition { get; set; }
     public string? ReturnNotes { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ReturnedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 
+    public Guid BookingId { get; set; }
+    public Guid InventoryItemId { get; set; }
+    public Guid ProductId { get; set; }
+
     // Navigation properties
-    public required Booking Booking { get; set; }
-    public required InventoryItem InventoryItem { get; set; }
-    public required Product Product { get; set; }
+    public Booking? Booking { get; set; }
+    public InventoryItem? InventoryItem { get; set; }
+    public Product? Product { get; set; }
 }

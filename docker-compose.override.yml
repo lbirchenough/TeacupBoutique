@@ -16,6 +16,33 @@ services:
       - ./.secrets/auth.env
     ports:
       - "5194:8080"
+
+  orders:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+    ports:
+      - "5079:8080"
+    env_file:
+      - ./.secrets/orders.env
+
+  inventory:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+    ports:
+      - "5035:8080"
+    env_file:
+      - ./.secrets/inventory.env
+
+  payments:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+    ports:
+      - "5127:8080"
+    env_file:
+      - ./.secrets/payments.env
   sql-auth:
       image: mcr.microsoft.com/mssql/server:2022-latest
       #container_name: sql
@@ -52,8 +79,23 @@ services:
         - "1435:1433"
       volumes:
         - sql-orders-data:/var/opt/mssql
+  
+  sql-payments:
+      image: mcr.microsoft.com/mssql/server:2022-latest
+      #container_name: sql
+      environment:
+        ACCEPT_EULA: "Y"
+      env_file:
+      - ./.secrets/sql-payments.env
+      # platform: "linux/amd64" for emulation on arm
+      ports:
+        - "1436:1433"
+      volumes:
+        - sql-payments-data:/var/opt/mssql
 
 volumes:
   sql-auth-data:
   sql-inventory-data:
   sql-orders-data:
+
+

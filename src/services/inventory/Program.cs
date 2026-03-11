@@ -1,4 +1,6 @@
 using inventory.Data;
+using inventory.Interfaces;
+using inventory.Services;
 using inventory.Workers;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -9,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 //builder.Services.AddHostedService<HelloQueueConsumer>();
 builder.Services.AddHostedService<OrderPlacedConsumer>();
+builder.Services.AddHostedService<OrderCancelledConsumer>();
+builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddScoped<InventoryEventService>();
 
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<InventoryDbContext>(opt =>
@@ -36,6 +41,8 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
+
 
 var app = builder.Build();
 

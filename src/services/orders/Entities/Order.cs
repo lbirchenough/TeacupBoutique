@@ -9,6 +9,7 @@ public enum OrderStatus
     Confirmed,
     Completed,
     Cancelled,
+    OutOfStock
 }
 
 public enum PaymentStatus
@@ -58,6 +59,8 @@ public class Order
 
     public PaymentStatus? PaymentStatus { get; set; }
     public Guid? PaymentId { get; set; }
+
+    public int PaymentAttempts { get; set; } = 0;
 
     public DateTime? CancelledAt { get; set; }
     public string? CancellationReason { get; set; }

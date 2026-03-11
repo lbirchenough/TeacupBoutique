@@ -1,10 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>08b434f5-1c8c-4381-8839-75643fe39d74</UserSecretsId>
+    <UserSecretsId>667ba6fe-127d-4880-8586-ccf023ce75c2</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>..\..\..</DockerfileContext>
     <DockerComposeProjectPath>..\..\..\docker-compose.dcproj</DockerComposeProjectPath>
@@ -17,14 +17,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.3" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.13.1" />
-    <PackageReference Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.1.4" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data\" />
-    <Folder Include="Interfaces\" />
-    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>

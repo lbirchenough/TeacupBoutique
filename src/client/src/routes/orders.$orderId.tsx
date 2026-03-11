@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { ordersApi } from '../lib/ordersApi'
+import { paymentsApi } from '../lib/paymentsApi'
 import type { OrderDetail, OrderStatus } from '../lib/types'
 
 export const Route = createFileRoute('/orders/$orderId')({
@@ -13,12 +14,21 @@ const statusConfig: Record<OrderStatus, { label: string; colour: string; descrip
     Confirmed:      { label: 'Confirmed',              colour: 'bg-green-100 text-green-700',  description: 'Your booking is confirmed.' },
     Completed:      { label: 'Completed',              colour: 'bg-gray-100 text-gray-600',    description: 'This order has been completed.' },
     Cancelled:      { label: 'Cancelled',              colour: 'bg-red-100 text-red-700',      description: 'This order was cancelled.' },
+    OutOfStock:     { label: 'Out of Stock', colour: 'bg-orange-100 text-orange-700', description: 'Sorry, one or more items in your order became unavailable. Please try again with different dates or items.' },
 }
 
-const terminalStatuses: OrderStatus[] = ['AwaitingPayment', 'Confirmed', 'Completed', 'Cancelled']
+const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 'OutOfStock']
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams()
+
+    const { mutate: capturePayment, isPending: isCapturing, isError: captureError } = useMutation({
+        mutationFn: () => paymentsApi.capture(orderId),
+    })
+
+    const { mutate: failPayment, isPending: isFailing } = useMutation({
+        mutationFn: () => paymentsApi.fail(orderId),
+    })
 
     const { data: order, isPending, isError, error } = useQuery<OrderDetail>({
         queryKey: ['order', orderId],
@@ -116,11 +126,34 @@ function OrderDetailPage() {
                 </div>
             </div>
 
-            {/* Payment placeholder */}
+            {/* Payment */}
             {order.status === 'AwaitingPayment' && (
                 <div className="bg-white border border-indigo-200 rounded-xl p-6 shadow-sm">
-                    <h2 className="font-semibold text-gray-800 mb-2">Payment</h2>
-                    <p className="text-sm text-gray-500">Payment integration coming soon.</p>
+                    <h2 className="font-semibold text-gray-800 mb-3">Payment</h2>
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-600">
+                            Total due: <span className="font-semibold text-gray-900">${order.total.toFixed(2)}</span>
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => capturePayment()}
+                                disabled={isCapturing || isFailing}
+                                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
+                            >
+                                {isCapturing ? 'Processing…' : 'Pay now'}
+                            </button>
+                            <button
+                                onClick={() => failPayment()}
+                                disabled={isCapturing || isFailing}
+                                className="bg-red-100 hover:bg-red-200 disabled:opacity-50 text-red-700 font-semibold px-4 py-2 rounded-lg transition-colors text-sm"
+                            >
+                                {isFailing ? '…' : 'Test fail'}
+                            </button>
+                        </div>
+                    </div>
+                    {captureError && (
+                        <p className="text-sm text-red-600 mt-2">Payment failed. Please try again.</p>
+                    )}
                 </div>
             )}
         </div>

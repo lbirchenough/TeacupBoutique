@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using inventory.Data;
 
@@ -11,9 +12,11 @@ using inventory.Data;
 namespace inventory.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    partial class InventoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309060208_AddExplicitFKsToBookingItem")]
+    partial class AddExplicitFKsToBookingItem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,11 +61,11 @@ namespace inventory.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("OrderId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
 
-                    b.Property<DateOnly>("ReservationDate")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("RentalDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("ReservedAt")
                         .HasColumnType("datetime2");
@@ -102,10 +105,7 @@ namespace inventory.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateOnly>("ReservationDate")
-                        .HasColumnType("date");
-
-                    b.Property<int?>("ReturnCondition")
+                    b.Property<int>("ReturnCondition")
                         .HasColumnType("int");
 
                     b.Property<string>("ReturnNotes")

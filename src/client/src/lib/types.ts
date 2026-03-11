@@ -67,7 +67,7 @@ export interface InventoryItemUpdateDto {
 }
 
 // Orders (response from API)
-export type OrderStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'AwaitingPayment'
+export type OrderStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'AwaitingPayment' | 'OutOfStock'
 export type PaymentStatus = 'Pending' | 'Paid' | 'Refunded'
 
 export interface OrderDetail {

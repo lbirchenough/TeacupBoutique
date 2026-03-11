@@ -11,3 +11,24 @@ services:
       context: .
       dockerfile: src/services/auth/Dockerfile
 
+
+  payments:
+    image: ${DOCKER_REGISTRY-}payments
+    build:
+      context: .
+      dockerfile: src/services/payments/Dockerfile
+
+
+  inventory:
+    image: ${DOCKER_REGISTRY-}inventory
+    build:
+      context: .
+      dockerfile: src/services/inventory/Dockerfile
+
+
+  orders:
+    image: ${DOCKER_REGISTRY-}orders
+    build:
+      context: .
+      dockerfile: src/services/orders/Dockerfile
+

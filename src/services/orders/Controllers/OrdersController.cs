@@ -28,19 +28,6 @@ namespace orders.Controllers
             return Ok(orders);
         }
 
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetOrder(Guid id)
-        {
-            
-            var order = await _context.Orders
-                .Include(o => o.OrderItems)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == id);
-            if (order is null)
-                return NotFound();
-            return Ok(order);
-        }
-
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
         {
@@ -80,6 +67,55 @@ namespace orders.Controllers
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
         }
+
+        [HttpGet("{id:guid}")]
+        public async Task<IActionResult> GetOrder(Guid id)
+        {
+            
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == id);
+            if (order is null)
+                return NotFound();
+            return Ok(order);
+        }
+
+        // [HttpPut("{id:guid}")]
+        // public async Task<IActionResult> UpdateOrder(Guid id, [FromBody] CreateOrderDto dto)
+        // {
+        //     var order = await _context.Orders
+        //         .Include(o => o.OrderItems)
+        //         .FirstOrDefaultAsync(o => o.Id == id);
+        //     if (order is null)
+        //         return NotFound();
+
+        //     // Only allow updating certain fields for simplicity
+        //     order.CustomerName = dto.CustomerName;
+        //     order.CustomerEmail = dto.CustomerEmail;
+        //     order.CustomerPhone = dto.CustomerPhone;
+        //     order.PickupDate = dto.PickupDate;
+        //     order.ReturnDate = dto.ReturnDate;
+        //     order.ReservationDate = dto.ReservationDate;
+        //     // order.EventType = dto.EventType;
+        //     // order.GuestCount = dto.GuestCount;
+        //     // order.SpecialRequests = dto.SpecialRequests;
+        //     order.UpdatedAt = DateTime.UtcNow;
+        //     order.OrderItems = dto.Items.Select(i => new OrderItem
+        //     {
+        //         ProductId = i.ProductId,
+        //         Quantity = i.Quantity,
+        //         ReservationDate = i.RentalDate,
+        //         Name = i.ProductName,
+        //         Colour = i.ProductThemeColor,
+        //         ImageUrl = i.ProductImageUrl,
+        //         UnitPrice = i.PricePerDay,
+        //         Total = i.Subtotal
+        //     }).ToList();
+
+        //     await _context.SaveChangesAsync();
+        //     return NoContent();
+        // }
 
     
     }

@@ -2,13 +2,19 @@ using Microsoft.EntityFrameworkCore;
 using orders.Data;
 using orders.Interfaces;
 using orders.Services;
+using orders.Workers;
 
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
+builder.Services.AddHostedService<StockReservedConsumer>();
+builder.Services.AddHostedService<StockUnavailableConsumer>();
+builder.Services.AddHostedService<PaymentCapturedConsumer>();
+builder.Services.AddHostedService<PaymentFailedConsumer>();
+builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddScoped<IOrderEvent, OrderEventService>();
 
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<OrdersDbContext>(opt =>
@@ -39,8 +45,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
-builder.Services.AddScoped<IOrderEvent, OrderEventService>();
+
 
 var app = builder.Build();
 

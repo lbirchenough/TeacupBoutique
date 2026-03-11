@@ -1,8 +1,9 @@
+using System;
 using System.Text;
-using orders.Interfaces;
+using inventory.Interfaces;
 using RabbitMQ.Client;
 
-namespace orders.Services;
+namespace inventory.Services;
 
 public class RabbitMqPublisher : IMessagePublisher, IDisposable
 {
@@ -17,13 +18,16 @@ public class RabbitMqPublisher : IMessagePublisher, IDisposable
         using var setupChannel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
         setupChannel.ExchangeDeclareAsync(exchange: _exchangeName, type: ExchangeType.Topic).GetAwaiter().GetResult();
     }
+    
     public async Task PublishAsync(string topic, string message)
     {
         
         using var channel = await _connection.CreateChannelAsync();
         var body = Encoding.UTF8.GetBytes(message);
         await channel.BasicPublishAsync(exchange: _exchangeName, routingKey: topic, body: body);
-        Console.WriteLine($" [orders] {topic} Sent: {message}");
+        Console.WriteLine($" [inventory] {topic} Sent: {message}");
     }
+
+
     public void Dispose() => _connection?.Dispose();
 }
