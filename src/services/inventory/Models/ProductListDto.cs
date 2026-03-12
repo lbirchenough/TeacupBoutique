@@ -10,4 +10,5 @@ public class ProductListDto
     public decimal DepositAmount { get; set; }
     public int Servings { get; set; }
     public string? FeaturedPhotoUrl { get; set; }
+    public string? Contents { get; set; }
 }

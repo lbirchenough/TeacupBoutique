@@ -52,6 +52,7 @@ namespace inventory.Controllers
                     Price = p.Price,
                     DepositAmount = p.DepositAmount,
                     Servings = p.Servings,
+                    Contents = p.Contents,
                     FeaturedPhotoUrl = p.Photos
                         .Where(ph => ph.IsFeatured)
                         .Select(ph => ph.Url)

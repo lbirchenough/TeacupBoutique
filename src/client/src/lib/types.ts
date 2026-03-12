@@ -7,6 +7,7 @@ export interface ProductListDto {
     depositAmount: number;
     servings: number;
     featuredPhotoUrl?: string | null;
+    contents?: string | null;
 }
 
 export interface ProductDetail {

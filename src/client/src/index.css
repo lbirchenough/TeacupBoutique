@@ -1,6 +1,68 @@
 @import "tailwindcss";
 
+@theme {
+  --color-cream: #F5F0E8;
+  --color-cream-dark: #EDE7DA;
+  --color-brown: #4A2218;
+  --color-brown-mid: #7B5241;
+  --color-brown-light: #A67C6B;
+  --color-gold: #C4953A;
+  --color-gold-light: #E8D4A0;
+  --color-gold-pale: #F5EDD6;
+
+  --font-script: 'Great Vibes', cursive;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Cormorant Garamond', Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--font-sans);
+  background-color: #F5F0E8;
+  color: #4A2218;
+}
+
+/* Smooth scrolling + slightly larger base for a more spacious feel */
+html {
+  scroll-behavior: smooth;
+  font-size: 18px;
+}
+
+/* Custom date input styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+/* Chess/checkerboard background pattern */
+.bg-checker {
+  background-image:
+    linear-gradient(45deg, rgba(196, 149, 58, 0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(196, 149, 58, 0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(196, 149, 58, 0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(196, 149, 58, 0.06) 75%);
+  background-size: 36px 36px;
+  background-position: 0 0, 0 18px, 18px -18px, -18px 0px;
+}
+
+/* Gold corner bracket — shared base */
+.corner-bracket::before,
+.corner-bracket::after {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #C4953A;
+  border-style: solid;
+  pointer-events: none;
+}
+
+/* Dotted divider used in Figma */
+.divider-dotted {
+  border-bottom: 1px dotted #C4953A;
+  opacity: 0.4;
 }

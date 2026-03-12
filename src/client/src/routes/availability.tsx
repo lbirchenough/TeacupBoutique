@@ -29,7 +29,7 @@ function AvailabilityPage() {
         enabled: !!selectedDate,
     })
 
-    // When date changes (including on mount): if it matches cart date, populate from cart; otherwise clear
+    // When date changes: if it matches cart date, populate from cart; otherwise clear
     useEffect(() => {
         const cartDate = cartStore.getReservationDate()
         const items = cartStore.getItems()
@@ -101,58 +101,77 @@ function AvailabilityPage() {
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-10 pb-32">
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">Check Availability</h1>
-            <p className="text-gray-500 mb-6">Pick your event date, then select what you need.</p>
+        <div className="pb-32">
+            {/* Step 1 — Date selection (full viewport when no date picked) */}
+            <div className={`flex flex-col items-center justify-center text-center px-6 transition-all ${!selectedDate ? 'min-h-[calc(100vh-80px)]' : 'py-16 border-b border-gold/20'}`}>
+                {/* Step badge */}
+                <div className="inline-block border border-gold px-5 py-1.5 mb-8">
+                    <span className="text-[10px] tracking-[0.3em] uppercase text-gold font-semibold">Step 1</span>
+                </div>
 
-            {/* Date picker */}
-            <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-8 flex items-center gap-4">
-                <label className="text-sm font-medium text-gray-700 shrink-0">Event date</label>
-                {selectedDate ? (
-                    <div className="flex items-center gap-3">
-                        <span className="font-medium text-gray-900">
-                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </span>
+                {!selectedDate ? (
+                    <>
+                        <h1 className="font-script text-6xl lg:text-7xl text-brown mb-4 leading-tight">
+                            When is your event?
+                        </h1>
+                        <p className="text-brown-mid mb-10 max-w-xs leading-relaxed">
+                            Select your special date to check availability
+                        </p>
+                        {/* Gold-bordered date input with calendar icon */}
+                        <div className="relative w-full max-w-sm">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                                <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                </svg>
+                            </div>
+                            <input
+                                type="date"
+                                min={today}
+                                value={selectedDate}
+                                onChange={e => setSelectedDate(e.target.value)}
+                                className="w-full border-2 border-gold bg-white pl-12 pr-4 py-4 text-brown focus:outline-none focus:border-gold/80 text-base"
+                            />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <p className="font-script text-4xl text-brown mb-2">
+                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', {
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                            })}
+                        </p>
                         <button
                             onClick={() => setSelectedDate('')}
-                            className="text-xs text-gray-400 hover:text-gray-600 underline"
+                            className="text-xs text-brown-light hover:text-brown underline underline-offset-2 transition-colors mt-1"
                         >
                             Change date
                         </button>
-                    </div>
-                ) : (
-                    <input
-                        type="date"
-                        min={today}
-                        value={selectedDate}
-                        onChange={e => setSelectedDate(e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
+                    </>
                 )}
             </div>
 
-            {!selectedDate && (
-                <div className="text-center py-20 text-gray-400">
-                    <p className="text-lg">Select a date above to see availability</p>
+            {selectedDate && isPending && (
+                <div className="text-center py-20">
+                    <p className="font-script text-3xl text-brown-light">Loading availability…</p>
                 </div>
             )}
 
-            {selectedDate && isPending && (
-                <div className="text-center py-20 text-gray-400">Loading availability…</div>
-            )}
-
             {selectedDate && isError && (
-                <div className="text-center py-20 text-red-500">Failed to load availability.</div>
+                <div className="text-center py-20">
+                    <p className="text-red-500">Failed to load availability. Please try again.</p>
+                </div>
             )}
 
             {data && (
-                <>
-                    <p className="text-sm text-gray-500 mb-4">
-                        {data.length} products for{' '}
-                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', {
-                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-                        })}
-                    </p>
+                <div className="max-w-4xl mx-auto px-6 py-10">
+                    <div className="flex items-center gap-4 mb-8">
+                        <div className="flex-1 h-px bg-gold/20" />
+                        <div className="inline-block border border-gold px-5 py-1.5">
+                            <span className="text-[10px] tracking-[0.3em] uppercase text-gold font-semibold">Step 2 — Select Items</span>
+                        </div>
+                        <div className="flex-1 h-px bg-gold/20" />
+                    </div>
+
                     <div className="flex flex-col gap-3">
                         {data.map(product => (
                             <ProductAvailabilityCard
@@ -164,19 +183,21 @@ function AvailabilityPage() {
                             />
                         ))}
                     </div>
-                </>
+                </div>
             )}
 
-            {/* Sticky add-to-cart bar */}
+            {/* Sticky bar */}
             {totalSelected > 0 && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40">
-                    <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+                <div className="fixed bottom-0 left-0 right-0 bg-brown border-t border-gold/20 shadow-2xl z-40">
+                    <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                            <p className="font-semibold text-gray-900">
-                                {totalSelected} item{totalSelected !== 1 ? 's' : ''} selected &middot; ${totalCost.toFixed(2)}
-                                {totalServings > 0 && <span className="font-normal text-gray-500"> &middot; serves {totalServings} people</span>}
+                            <p className="font-semibold text-cream">
+                                {totalSelected} item{totalSelected !== 1 ? 's' : ''} &middot; ${totalCost.toFixed(2)}
+                                {totalServings > 0 && (
+                                    <span className="font-normal text-cream/60"> &middot; serves {totalServings} people</span>
+                                )}
                             </p>
-                            <p className="text-xs text-gray-500 truncate mt-0.5">
+                            <p className="text-xs text-cream/50 truncate mt-0.5">
                                 {selectedEntries.map(([id, q]) => {
                                     const name = data?.find(p => p.productId === id)?.name ?? id
                                     return `${q}× ${name}`
@@ -185,9 +206,9 @@ function AvailabilityPage() {
                         </div>
                         <button
                             onClick={handleAddToCart}
-                            className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-colors"
+                            className="shrink-0 bg-gold hover:bg-gold-light text-brown font-semibold px-8 py-3 text-xs tracking-[0.15em] uppercase transition-colors"
                         >
-                            {isUpdatingCart ? 'Update cart →' : 'Add to cart →'}
+                            {isUpdatingCart ? 'Update Cart →' : 'Add to Cart →'}
                         </button>
                     </div>
                 </div>
@@ -196,29 +217,28 @@ function AvailabilityPage() {
             {/* Date conflict modal */}
             {showConflictPrompt && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setShowConflictPrompt(false)} />
-                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-                        <h3 className="font-bold text-gray-900 mb-2">Different date selected</h3>
-                        <p className="text-sm text-gray-600 mb-2">
+                    <div className="absolute inset-0 bg-brown/60" onClick={() => setShowConflictPrompt(false)} />
+                    <div className="relative bg-cream rounded-none shadow-2xl w-full max-w-sm p-8">
+                        <h3 className="font-serif text-xl text-brown mb-3">Different date selected</h3>
+                        <p className="text-sm text-brown-mid mb-2">
                             Your cart already has items booked for{' '}
-                            <span className="font-medium">
+                            <span className="font-semibold">
                                 {new Date((cartStore.getReservationDate() ?? '') + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
                             </span>.
                         </p>
-                        <p className="text-sm text-gray-600 mb-5">
-                            Orders must be for a single date — those items will be removed.
-                            Please place a separate order if you need rentals for multiple dates.
+                        <p className="text-sm text-brown-mid mb-7">
+                            Orders must be for a single date — those items will be removed if you continue.
                         </p>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => { setShowConflictPrompt(false); setQuantities({}) }}
-                                className="flex-1 border border-gray-300 text-gray-700 font-medium py-2 rounded-lg hover:bg-gray-50 text-sm"
+                                className="flex-1 border border-brown/30 text-brown font-medium py-2.5 text-sm hover:bg-cream-dark transition-colors"
                             >
                                 Keep current cart
                             </button>
                             <button
                                 onClick={handleReplaceCart}
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-lg text-sm"
+                                className="flex-1 bg-brown hover:bg-brown-mid text-cream font-medium py-2.5 text-sm transition-colors"
                             >
                                 Replace cart
                             </button>
@@ -240,7 +260,7 @@ function AvailabilityPage() {
     )
 }
 
-// ─── Card ────────────────────────────────────────────────────────────────────
+// ─── Card ─────────────────────────────────────────────────────────────────────
 
 function ProductAvailabilityCard({
     product, quantity, onQtyChange, onViewDetails,
@@ -255,53 +275,52 @@ function ProductAvailabilityCard({
 
     const badge =
         product.total === 0
-            ? { label: 'No stock', colour: 'bg-gray-100 text-gray-500' }
+            ? { label: 'No stock', colour: 'bg-cream-dark text-brown-light border border-brown/10' }
             : isUnavailable
-            ? { label: 'Fully booked', colour: 'bg-red-100 text-red-700' }
+            ? { label: 'Fully booked', colour: 'bg-red-50 text-red-700 border border-red-200' }
             : ratio < 0.5
-            ? { label: `${product.available} of ${product.total} left`, colour: 'bg-amber-100 text-amber-700' }
-            : { label: `${product.available} of ${product.total} free`, colour: 'bg-green-100 text-green-700' }
+            ? { label: `${product.available} of ${product.total} left`, colour: 'bg-amber-50 text-amber-700 border border-amber-200' }
+            : { label: `${product.available} of ${product.total} free`, colour: 'bg-green-50 text-green-700 border border-green-200' }
 
     return (
-        <div className={`bg-white border rounded-xl overflow-hidden shadow-sm flex flex-row transition-opacity ${isUnavailable ? 'opacity-50' : ''} ${quantity > 0 ? 'border-indigo-300 ring-1 ring-indigo-300' : 'border-gray-200'}`}>
+        <div className={`bg-white border overflow-hidden flex flex-row transition-opacity ${isUnavailable ? 'opacity-50' : ''} ${quantity > 0 ? 'border-gold' : 'border-gold/20'}`}>
             {/* Thumbnail */}
             <button
                 onClick={onViewDetails}
-                className="w-24 sm:w-32 bg-gray-100 shrink-0 overflow-hidden"
+                className="w-24 sm:w-32 bg-cream-dark shrink-0 overflow-hidden"
             >
                 {product.featuredPhotoUrl ? (
                     <img src={product.featuredPhotoUrl} alt={product.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200" />
                 ) : (
-                    <span className="flex items-center justify-center w-full h-full text-gray-300 text-xs">No image</span>
+                    <span className="flex items-center justify-center w-full h-full font-script text-brown-light text-sm">No image</span>
                 )}
             </button>
 
             {/* Content */}
-            <div className="flex flex-1 items-center gap-4 px-4 py-3 min-w-0">
-                {/* Name + badge */}
+            <div className="flex flex-1 items-center gap-4 px-5 py-4 min-w-0">
                 <div className="flex-1 min-w-0">
                     <button
                         onClick={onViewDetails}
-                        className="font-semibold text-gray-900 leading-tight text-left hover:text-indigo-600 transition-colors truncate block w-full"
+                        className="font-serif text-brown leading-tight text-left hover:text-gold transition-colors truncate block w-full text-base"
                     >
                         {product.name}
                     </button>
-                    <p className="text-sm text-gray-500 mt-0.5">
+                    <p className="text-sm text-brown-mid mt-0.5">
                         ${product.pricePerDay.toFixed(2)}
-                        {product.servings > 0 && <span className="ml-2">· serves {product.servings}</span>}
+                        {product.servings > 0 && <span className="ml-2 text-brown-light">· serves {product.servings} people</span>}
                     </p>
-                    <span className={`inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${badge.colour}`}>
+                    <span className={`inline-block mt-2 text-xs font-medium px-2.5 py-0.5 rounded-full ${badge.colour}`}>
                         {badge.label}
                     </span>
                 </div>
 
                 {/* Controls */}
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="shrink-0 flex items-center gap-3">
                     {!isUnavailable && (
                         quantity === 0 ? (
                             <button
                                 onClick={() => onQtyChange(1)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                                className="border border-brown text-brown text-xs font-semibold tracking-widest uppercase px-4 py-2 hover:bg-brown hover:text-cream transition-colors"
                             >
                                 + Add
                             </button>
@@ -309,15 +328,15 @@ function ProductAvailabilityCard({
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => onQtyChange(-1)}
-                                    className="w-8 h-8 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium"
+                                    className="w-8 h-8 border border-brown/30 text-brown hover:bg-cream-dark font-medium transition-colors"
                                 >
                                     −
                                 </button>
-                                <span className="font-semibold text-gray-900 w-6 text-center">{quantity}</span>
+                                <span className="font-semibold text-brown w-6 text-center">{quantity}</span>
                                 <button
                                     onClick={() => onQtyChange(1)}
                                     disabled={quantity >= product.available}
-                                    className="w-8 h-8 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium disabled:opacity-40"
+                                    className="w-8 h-8 border border-brown/30 text-brown hover:bg-cream-dark font-medium transition-colors disabled:opacity-30"
                                 >
                                     +
                                 </button>
@@ -326,7 +345,7 @@ function ProductAvailabilityCard({
                     )}
                     <button
                         onClick={onViewDetails}
-                        className="text-xs text-gray-400 hover:text-indigo-600 pl-1"
+                        className="text-xs text-brown-light hover:text-brown transition-colors"
                     >
                         Details
                     </button>
@@ -336,7 +355,7 @@ function ProductAvailabilityCard({
     )
 }
 
-// ─── Modal ───────────────────────────────────────────────────────────────────
+// ─── Modal ────────────────────────────────────────────────────────────────────
 
 function ProductDetailModal({
     product, quantity, onQtyChange, onClose,
@@ -358,33 +377,33 @@ function ProductDetailModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+            <div className="absolute inset-0 bg-brown/60" onClick={onClose} />
 
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-cream w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-900 shadow text-sm"
+                    className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center text-brown-mid hover:text-brown text-lg"
                 >
                     ✕
                 </button>
 
                 {/* Photo */}
-                <div className="h-56 bg-gray-100 overflow-hidden rounded-t-2xl flex items-center justify-center">
+                <div className="h-60 bg-cream-dark overflow-hidden flex items-center justify-center">
                     {displayPhoto ? (
                         <img src={displayPhoto} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
-                        <span className="text-gray-300">No image</span>
+                        <span className="font-script text-2xl text-brown-light">No image</span>
                     )}
                 </div>
 
                 {/* Photo strip */}
                 {photos.length > 1 && (
-                    <div className="flex gap-2 px-5 py-2 overflow-x-auto">
+                    <div className="flex gap-2 px-5 py-3 overflow-x-auto bg-white border-b border-gold/20">
                         {photos.map((ph, i) => (
                             <button
                                 key={ph.id}
                                 onClick={() => setPhotoIndex(i)}
-                                className={`w-12 h-12 rounded-md overflow-hidden shrink-0 border-2 transition-colors ${i === photoIndex ? 'border-indigo-500' : 'border-transparent'}`}
+                                className={`w-12 h-12 overflow-hidden shrink-0 border-2 transition-colors ${i === photoIndex ? 'border-gold' : 'border-transparent'}`}
                             >
                                 <img src={ph.url} alt="" className="w-full h-full object-cover" />
                             </button>
@@ -392,32 +411,34 @@ function ProductDetailModal({
                     </div>
                 )}
 
-                <div className="p-5">
-                    <h2 className="text-xl font-bold text-gray-900 mb-1">{product.name}</h2>
-                    {detail?.colour && <p className="text-sm text-gray-500 mb-2">{detail.colour}</p>}
-                    <p className="text-lg font-semibold text-gray-900 mb-4">${product.pricePerDay.toFixed(2)} / day</p>
+                <div className="p-6">
+                    <h2 className="font-serif text-2xl text-brown mb-1">{product.name}</h2>
+                    {detail?.colour && <p className="text-xs tracking-widest uppercase text-gold mb-3">{detail.colour}</p>}
+                    <p className="text-xl font-semibold text-brown mb-5">${product.pricePerDay.toFixed(2)}</p>
 
-                    {isPending && <p className="text-sm text-gray-400 mb-4">Loading details…</p>}
+                    {isPending && <p className="text-sm text-brown-light mb-4">Loading details…</p>}
 
                     {detail?.description && (
-                        <p className="text-sm text-gray-600 mb-3">{detail.description}</p>
+                        <p className="text-sm text-brown-mid leading-relaxed mb-4">{detail.description}</p>
                     )}
                     {detail?.contents && (
-                        <div className="mb-3">
-                            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Contents</p>
-                            <p className="text-sm text-gray-700">{detail.contents}</p>
+                        <div className="mb-4">
+                            <p className="text-xs font-semibold text-brown-light uppercase tracking-widest mb-1">Contents</p>
+                            <p className="text-sm text-brown-mid">{detail.contents}</p>
                         </div>
                     )}
                     {!!detail?.servings && (
-                        <p className="text-sm text-gray-500 mb-4">Serves {detail.servings}</p>
+                        <p className="text-sm text-brown-mid mb-5">Serves {detail.servings} people</p>
                     )}
 
                     {/* Availability badge */}
-                    <div className="mb-5">
-                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                            isUnavailable ? 'bg-red-100 text-red-700' :
-                            product.available / product.total < 0.5 ? 'bg-amber-100 text-amber-700' :
-                            'bg-green-100 text-green-700'
+                    <div className="mb-6">
+                        <span className={`text-xs font-medium px-3 py-1 rounded-full border ${
+                            isUnavailable
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : product.available / product.total < 0.5
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-green-50 text-green-700 border-green-200'
                         }`}>
                             {isUnavailable ? 'Fully booked' : `${product.available} of ${product.total} available`}
                         </span>
@@ -429,24 +450,24 @@ function ProductDetailModal({
                             {quantity === 0 ? (
                                 <button
                                     onClick={() => onQtyChange(1)}
-                                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
+                                    className="flex-1 border border-brown text-brown font-semibold py-3 text-xs tracking-widest uppercase hover:bg-brown hover:text-cream transition-colors"
                                 >
-                                    + Add to selection
+                                    + Add to Selection
                                 </button>
                             ) : (
                                 <>
-                                    <div className="flex items-center gap-3 border border-gray-300 rounded-lg px-3 py-2">
-                                        <button onClick={() => onQtyChange(-1)} className="text-gray-600 hover:text-gray-900 font-medium w-5 text-center">−</button>
-                                        <span className="font-semibold w-5 text-center">{quantity}</span>
+                                    <div className="flex items-center gap-3 border border-brown/30 px-4 py-2.5">
+                                        <button onClick={() => onQtyChange(-1)} className="text-brown hover:text-brown-mid font-medium w-5 text-center">−</button>
+                                        <span className="font-semibold text-brown w-5 text-center">{quantity}</span>
                                         <button
                                             onClick={() => onQtyChange(1)}
                                             disabled={quantity >= product.available}
-                                            className="text-gray-600 hover:text-gray-900 font-medium w-5 text-center disabled:opacity-40"
+                                            className="text-brown hover:text-brown-mid font-medium w-5 text-center disabled:opacity-30"
                                         >+</button>
                                     </div>
                                     <button
                                         onClick={onClose}
-                                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors"
+                                        className="flex-1 bg-brown hover:bg-brown-mid text-cream font-semibold py-3 text-xs tracking-widest uppercase transition-colors"
                                     >
                                         Done
                                     </button>
