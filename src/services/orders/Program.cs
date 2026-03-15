@@ -63,4 +63,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 app.Run();
