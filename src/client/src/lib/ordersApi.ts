@@ -1,6 +1,6 @@
 import type { CreateOrderRequest, OrderDetail } from './types'
 
-const ORDERS_API_BASE_URL = import.meta.env.VITE_ORDERS_API_URL || 'http://localhost:5079'
+const ORDERS_API_BASE_URL = import.meta.env.VITE_ORDERS_API_URL || 'http://localhost:5054'
 
 export const ordersApi = {
     createOrder: async (dto: CreateOrderRequest) => {

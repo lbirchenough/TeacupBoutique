@@ -1,4 +1,4 @@
-const PAYMENTS_API_BASE_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'http://localhost:5127'
+const PAYMENTS_API_BASE_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'http://localhost:5054'
 
 export const paymentsApi = {
     createIntent: async (orderId: string, amount: number): Promise<{ clientSecret: string }> => {

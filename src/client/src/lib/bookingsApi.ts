@@ -1,6 +1,7 @@
+import { authStore } from './authStore'
 import type { BookingDetail, BookingListItem, ReturnCondition } from './types'
 
-const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5035'
+const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5054'
 
 export interface BookingItemReturnDto {
     bookingItemId: string
@@ -8,35 +9,50 @@ export interface BookingItemReturnDto {
     returnNotes?: string | null
 }
 
+function authHeaders(): HeadersInit {
+    const token = authStore.getAccessToken()
+    return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export const bookingsApi = {
     getBookings: async (): Promise<BookingListItem[]> => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings`)
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings`, {
+            headers: { ...authHeaders() },
+        })
         if (!response.ok) throw new Error(`Failed to fetch bookings (${response.status})`)
         return response.json()
     },
 
     getBooking: async (id: string): Promise<BookingDetail> => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}`)
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}`, {
+            headers: { ...authHeaders() },
+        })
         if (!response.ok) throw new Error(`Failed to fetch booking (${response.status})`)
         return response.json()
     },
 
     checkOut: async (id: string): Promise<void> => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/checkout`, { method: 'PUT' })
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/checkout`, {
+            method: 'PUT',
+            headers: { ...authHeaders() },
+        })
         if (!response.ok) throw new Error(`Failed to check out booking (${response.status})`)
     },
 
     markReturned: async (id: string, items: BookingItemReturnDto[]): Promise<void> => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/return`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
             body: JSON.stringify({ items }),
         })
         if (!response.ok) throw new Error(`Failed to mark booking as returned (${response.status})`)
     },
 
     complete: async (id: string): Promise<void> => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/complete`, { method: 'PUT' })
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/complete`, {
+            method: 'PUT',
+            headers: { ...authHeaders() },
+        })
         if (!response.ok) throw new Error(`Failed to complete booking (${response.status})`)
     },
 }
