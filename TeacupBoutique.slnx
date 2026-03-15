@@ -5,6 +5,7 @@
   <Folder Name="/src/services/">
     <Project Path="src/services/auth/auth.csproj" />
     <Project Path="src/services/inventory/inventory.csproj" />
+    <Project Path="src/services/notifications/notifications.csproj" />
     <Project Path="src/services/orders/orders.csproj" />
     <Project Path="src/services/payments/payments.csproj" />
   </Folder>

@@ -1,52 +1,24 @@
-using System.Text;
 using System.Text.Json;
 using inventory.Services;
 using orders.Models;
-using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 
 namespace inventory.Workers;
 
-public class OrderPlacedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory) : BackgroundService
+public class OrderPlacedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
+    : RabbitMqConsumerBase(configuration)
 {
-    private IConnection? _connection;
-    private IChannel? _channel;
+    protected override string QueueName => "inventory.order-placed";
+    protected override string RoutingKey => "orders.OrderPlaced";
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        var hostName = configuration["RabbitMQ:HostName"] ?? "localhost";
-        var factory = new ConnectionFactory { HostName = hostName };
+        Console.WriteLine($" [inventory] OrderPlaced received: {message}");
 
-        _connection = await factory.CreateConnectionAsync(stoppingToken);
-        _channel = await _connection.CreateChannelAsync();
-        await _channel.ExchangeDeclareAsync(exchange: "commerce.events", type: ExchangeType.Topic);
+        var order = JsonSerializer.Deserialize<OrderPlacedDto>(message);
+        if (order is null) return;
 
-        await _channel.QueueDeclareAsync(queue: "inventory.order-placed", durable: true, exclusive: false, autoDelete: false);
-        await _channel.QueueBindAsync(queue: "inventory.order-placed", exchange: "commerce.events", routingKey: "orders.OrderPlaced");
-
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-        consumer.ReceivedAsync += async (_, ea) =>
-        {
-            var body = ea.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-            var order = JsonSerializer.Deserialize<OrderPlacedDto>(message);
-            Console.WriteLine($" [inventory] Order Received-> Id:{order.OrderId}, Items: {string.Join(", ", order.Items?.Select(i => $"{i.ProductId}:{i.Quantity}:{i.ClaimedPricePerDay}"))}, PlacedAt: {order.PlacedAt}");
-            using var scope = scopeFactory.CreateScope();
-            var inventoryEventService = scope.ServiceProvider.GetRequiredService<InventoryEventService>();
-            await inventoryEventService.CheckStockAndPublishEvent(order);
-            await _channel!.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
-        };
-
-        await _channel.BasicConsumeAsync("inventory.order-placed", autoAck: false, consumer: consumer);
-        Console.WriteLine($" [inventory] Listening on routing key 'orders.OrderPlaced'");
-
-        await Task.Delay(Timeout.Infinite, stoppingToken);
-    }
-
-    public override void Dispose()
-    {
-        _channel?.Dispose();
-        _connection?.Dispose();
-        base.Dispose();
+        using var scope = scopeFactory.CreateScope();
+        var inventoryEventService = scope.ServiceProvider.GetRequiredService<InventoryEventService>();
+        await inventoryEventService.CheckStockAndPublishEvent(order);
     }
 }

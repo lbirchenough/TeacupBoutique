@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ordersApi } from '../lib/ordersApi'
-import { paymentsApi } from '../lib/paymentsApi'
+import { StripePaymentForm } from '../components/StripePaymentForm'
 import type { OrderDetail, OrderStatus } from '../lib/types'
 
 export const Route = createFileRoute('/orders/$orderId')({
@@ -21,14 +21,6 @@ const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams()
-
-    const { mutate: capturePayment, isPending: isCapturing, isError: captureError } = useMutation({
-        mutationFn: () => paymentsApi.capture(orderId),
-    })
-
-    const { mutate: failPayment, isPending: isFailing } = useMutation({
-        mutationFn: () => paymentsApi.fail(orderId),
-    })
 
     const { data: order, isPending, isError, error } = useQuery<OrderDetail>({
         queryKey: ['order', orderId],
@@ -139,31 +131,15 @@ function OrderDetailPage() {
                 {/* Payment */}
                 {order.status === 'AwaitingPayment' && (
                     <div className="bg-white border border-gold p-6">
-                        <h2 className="font-serif text-lg text-brown mb-4">Payment</h2>
-                        <div className="flex items-center justify-between">
-                            <p className="text-sm text-brown-mid">
-                                Total due: <span className="font-semibold text-brown text-base">${order.total.toFixed(2)}</span>
-                            </p>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => capturePayment()}
-                                    disabled={isCapturing || isFailing}
-                                    className="bg-brown hover:bg-brown-mid disabled:opacity-50 text-cream font-semibold px-8 py-2.5 text-xs tracking-widest uppercase transition-colors"
-                                >
-                                    {isCapturing ? 'Processing…' : 'Pay Now'}
-                                </button>
-                                <button
-                                    onClick={() => failPayment()}
-                                    disabled={isCapturing || isFailing}
-                                    className="bg-red-50 hover:bg-red-100 disabled:opacity-50 text-red-700 font-medium px-4 py-2.5 text-xs transition-colors"
-                                >
-                                    {isFailing ? '…' : 'Test fail'}
-                                </button>
-                            </div>
-                        </div>
-                        {captureError && (
-                            <p className="text-sm text-red-600 mt-3">Payment failed. Please try again.</p>
-                        )}
+                        <h2 className="font-serif text-lg text-brown mb-1">Payment</h2>
+                        <p className="text-sm text-brown-mid mb-5">
+                            Total due: <span className="font-semibold text-brown text-base">${order.total.toFixed(2)}</span>
+                        </p>
+                        <StripePaymentForm
+                            orderId={orderId}
+                            amount={order.total}
+                            onSuccess={() => {/* polling will update the status automatically */}}
+                        />
                     </div>
                 )}
             </div>
