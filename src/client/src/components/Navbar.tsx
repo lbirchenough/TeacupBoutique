@@ -50,6 +50,12 @@ export function Navbar() {
             >
               Book Now
             </Link>
+            <Link
+              to="/bookings"
+              className="text-sm text-brown-mid hover:text-brown transition-colors"
+            >
+              Bookings
+            </Link>
 
             {/* Cart icon */}
             <Link to="/cart" className="relative text-brown-mid hover:text-brown transition-colors">

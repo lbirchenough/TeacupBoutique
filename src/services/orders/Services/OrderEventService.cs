@@ -56,7 +56,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         Console.WriteLine($" [orders] Order {orderId} status → OutOfStock");
     }
 
-    public async Task HandlePaymentCaptured(string message)
+    public async Task HandlePaymentSucceeded(string message)
     {
         var payload = JsonSerializer.Deserialize<PaymentEventDto>(message);
         if (payload is null) return;

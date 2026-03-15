@@ -97,6 +97,28 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
         }
     }
 
+    public async Task HandlePaymentSucceeded(Guid orderId)
+    {
+        var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.OrderId == orderId);
+        if (booking is null)
+        {
+            Console.WriteLine($" [inventory] No booking found for payment captured on order {orderId}");
+            return;
+        }
+
+        if (booking.Status != BookingStatus.Reserved)
+        {
+            Console.WriteLine($" [inventory] Booking {booking.Id} is not in Reserved status, skipping confirmation");
+            return;
+        }
+
+        booking.Status = BookingStatus.Confirmed;
+        booking.ConfirmedAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        Console.WriteLine($" [inventory] Booking {booking.Id} confirmed for order {orderId}");
+    }
+
     public async Task HandleOrderCancelled(Guid orderId)
     {
         var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.OrderId == orderId);

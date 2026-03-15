@@ -8,11 +8,10 @@ public class PaymentService(IMessagePublisher _publisher)
     public async Task CaptureAsync(Guid orderId)
     {
         // TODO: real payment provider integration (Stripe etc.)
-        // For now, always succeed and publish PaymentCaptured
         Console.WriteLine($" [payments] Capturing payment for orderId: {orderId}");
 
         var payload = JsonSerializer.Serialize(new { OrderId = orderId });
-        await _publisher.PublishAsync("payments.PaymentCaptured", payload);
+        await _publisher.PublishAsync("payments.PaymentSucceeded", payload);
     }
 
     public async Task FailAsync(Guid orderId)

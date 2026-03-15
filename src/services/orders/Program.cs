@@ -11,7 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddHostedService<StockReservedConsumer>();
 builder.Services.AddHostedService<StockUnavailableConsumer>();
-builder.Services.AddHostedService<PaymentCapturedConsumer>();
+builder.Services.AddHostedService<PaymentSucceededConsumer>();
 builder.Services.AddHostedService<PaymentFailedConsumer>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<IOrderEvent, OrderEventService>();

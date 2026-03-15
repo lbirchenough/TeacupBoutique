@@ -76,7 +76,7 @@ public class PaymentProcessorWorker(
                     await db.SaveChangesAsync();
 
                     var routingKey = status == PaymentStatus.Succeeded
-                        ? "payments.PaymentCaptured"
+                        ? "payments.PaymentSucceeded"
                         : "payments.PaymentFailed";
 
                     var payload = JsonSerializer.Serialize(new { OrderId = orderId, StripePaymentIntentId = paymentIntent.Id });

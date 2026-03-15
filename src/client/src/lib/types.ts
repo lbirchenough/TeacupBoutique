@@ -109,6 +109,53 @@ export interface OrderItemDetail {
     total: number;
 }
 
+// Bookings
+export type BookingStatus = 'Reserved' | 'Confirmed' | 'CheckedOut' | 'Returned' | 'Completed' | 'Cancelled'
+export type ReturnCondition = 'Good' | 'Damaged' | 'MissingItems'
+
+export interface BookingListItem {
+    id: string
+    orderId: string
+    reservationDate: string
+    status: BookingStatus
+    reservedAt: string
+    confirmedAt?: string | null
+    checkedOutAt?: string | null
+    returnedAt?: string | null
+    completedAt?: string | null
+    notes?: string | null
+    createdAt: string
+    itemCount: number
+}
+
+export interface BookingItemDetail {
+    id: string
+    reservationDate: string
+    returnCondition?: ReturnCondition | null
+    returnNotes?: string | null
+    returnedAt?: string | null
+    completedAt?: string | null
+    productId: string
+    productName: string
+    productColour?: string | null
+    inventoryItemId: string
+}
+
+export interface BookingDetail {
+    id: string
+    orderId: string
+    reservationDate: string
+    status: BookingStatus
+    reservedAt: string
+    confirmedAt?: string | null
+    checkedOutAt?: string | null
+    returnedAt?: string | null
+    completedAt?: string | null
+    notes?: string | null
+    createdAt: string
+    bookingItems: BookingItemDetail[]
+}
+
 // Availability
 export interface ProductAvailabilityDto {
     productId: string

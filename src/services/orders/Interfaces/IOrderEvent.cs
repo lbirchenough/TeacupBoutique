@@ -8,6 +8,6 @@ public interface IOrderEvent
     Task PublishOrder(Order order);
     Task HandleStockReserved(string orderId);
     Task HandleStockUnavailable(string orderId);
-    Task HandlePaymentCaptured(string message);
+    Task HandlePaymentSucceeded(string message);
     Task HandlePaymentFailed(string message);
 }

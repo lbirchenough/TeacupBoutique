@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 //builder.Services.AddHostedService<HelloQueueConsumer>();
 builder.Services.AddHostedService<OrderPlacedConsumer>();
 builder.Services.AddHostedService<OrderCancelledConsumer>();
+builder.Services.AddHostedService<PaymentSucceededConsumer>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<InventoryEventService>();
 
