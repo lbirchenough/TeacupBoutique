@@ -3,13 +3,14 @@ using auth.Data;
 using auth.Models;
 using auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddSingleton<TokenService>();
+builder.Services.AddScoped<TokenService>();
 
 
 
@@ -36,6 +37,7 @@ builder.Services
 
         options.User.RequireUniqueEmail = true;
     })
+    .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AuthDbContext>();
 
 
@@ -89,9 +91,23 @@ if (app.Environment.IsDevelopment())
         try { await db.Database.MigrateAsync(); break; }
         catch { await Task.Delay(3000); }
     }
-    // optional: seed users here if you want
-    // var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    // await Seed.SeedUsers(userManager);
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    foreach (var role in new[] { "Admin", "User" })
+        if (!await roleManager.RoleExistsAsync(role))
+            await roleManager.CreateAsync(new IdentityRole(role));
+
+    var adminEmail = app.Configuration["AdminSeed:Email"]!;
+    var adminPassword = app.Configuration["AdminSeed:Password"]!;
+
+    if (await userManager.FindByEmailAsync(adminEmail) is null)
+    {
+        var admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail };
+        await userManager.CreateAsync(admin, adminPassword);
+        await userManager.AddToRoleAsync(admin, "Admin");
+    }
 }
 
 

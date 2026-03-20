@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { authApi } from '../lib/api'
+import { useAuth } from '../lib/useAuth'
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
@@ -9,6 +10,7 @@ export const Route = createFileRoute('/register')({
 
 function RegisterPage() {
   const navigate = useNavigate()
+  const { setToken } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -21,8 +23,7 @@ function RegisterPage() {
   const registerMutation = useMutation({
     mutationFn: authApi.register,
     onSuccess: (data) => {
-      console.log('Register response:', data)
-      // Navigate to home after successful registration
+      setToken(data.accessToken)
       navigate({ to: '/' })
     },
     onError: (error) => {

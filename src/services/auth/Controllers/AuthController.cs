@@ -15,7 +15,7 @@ namespace auth.Controllers
     {
         
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequest req)
+        public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
         {
             var user = new ApplicationUser
             {
@@ -28,7 +28,11 @@ namespace auth.Controllers
             if (!result.Succeeded)
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
-            return Ok();
+            await userManager.AddToRoleAsync(user, "User");
+            await SetRefreshTokenCookie(user);
+
+            var token = await tokenService.CreateAccessToken(user);
+            return Ok(new AuthResponse(token));
         }
 
         [HttpPost("login")]
@@ -47,7 +51,7 @@ namespace auth.Controllers
 
             await SetRefreshTokenCookie(user);
 
-            var token = tokenService.CreateAccessToken(user);
+            var token = await tokenService.CreateAccessToken(user);
             return Ok(new AuthResponse(token));
         }
 
@@ -67,7 +71,7 @@ namespace auth.Controllers
 
             await SetRefreshTokenCookie(user);
 
-            var token = tokenService.CreateAccessToken(user);
+            var token = await tokenService.CreateAccessToken(user);
             return Ok(new AuthResponse(token));
         }
 

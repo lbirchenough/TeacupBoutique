@@ -4,13 +4,14 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using auth.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 
 namespace auth.Services;
 
-public class TokenService(IConfiguration config)
+public class TokenService(IConfiguration config, UserManager<ApplicationUser> userManager)
 {
-    public string CreateAccessToken(ApplicationUser user)
+    public async Task<string> CreateAccessToken(ApplicationUser user)
     {
         var jwt = config.GetSection("Jwt");
         var issuer = jwt["Issuer"]!;
@@ -23,9 +24,12 @@ public class TokenService(IConfiguration config)
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
-            new(JwtRegisteredClaimNames.Email, user.Email ?? ""), 
-            //new(ClaimTypes.NameIdentifier, user.Id)
+            new(JwtRegisteredClaimNames.Email, user.Email ?? ""),
         };
+
+        var roles = await userManager.GetRolesAsync(user);
+        foreach (var role in roles)
+            claims.Add(new Claim(ClaimTypes.Role, role));
 
         var token = new JwtSecurityToken(
             issuer: issuer,

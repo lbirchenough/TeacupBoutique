@@ -6,7 +6,7 @@ import { useCart } from '../lib/useCart'
 
 export function Navbar() {
   const navigate = useNavigate()
-  const { isLoggedIn, setToken } = useAuth()
+  const { isLoggedIn, isAdmin, setToken } = useAuth()
   const { count } = useCart()
   const queryClient = useQueryClient()
 
@@ -52,12 +52,14 @@ export function Navbar() {
             >
               Book Now
             </Link>
-            <Link
-              to="/bookings"
-              className="text-sm text-brown-mid hover:text-brown transition-colors"
-            >
-              Bookings
-            </Link>
+            {isAdmin && (
+              <Link
+                to="/bookings"
+                className="text-sm text-brown-mid hover:text-brown transition-colors"
+              >
+                Bookings
+              </Link>
+            )}
 
             {/* Cart icon */}
             <Link to="/cart" className="relative text-brown-mid hover:text-brown transition-colors">

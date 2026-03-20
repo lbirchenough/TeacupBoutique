@@ -5,6 +5,16 @@ import { authStore } from './authStore'
 import type { AuthContextValue } from './authTypes'
 import { AuthContext } from './AuthContextBase'
 
+function parseIsAdmin(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const role = payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
+    return role === 'Admin'
+  } catch {
+    return false
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(authStore.getAccessToken())
   const [initialised, setInitialised] = useState(false)
@@ -47,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextValue = {
     isLoggedIn: !!accessToken,
+    isAdmin: accessToken ? parseIsAdmin(accessToken) : false,
     accessToken,
     setToken,
   }
