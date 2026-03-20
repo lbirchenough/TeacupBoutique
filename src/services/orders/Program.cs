@@ -33,23 +33,7 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("SpaDev", policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowCredentials()
-            .AllowAnyMethod();
-    });
-});
-
-
-
 var app = builder.Build();
-
-app.UseCors("SpaDev");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -67,7 +51,11 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
-    await db.Database.MigrateAsync();
+    for (var i = 0; i < 10; i++)
+    {
+        try { await db.Database.MigrateAsync(); break; }
+        catch { await Task.Delay(3000); }
+    }
 }
 
 app.Run();

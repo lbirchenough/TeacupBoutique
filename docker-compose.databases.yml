@@ -59,9 +59,12 @@ services:
     # environment:
     #   RABBITMQ_DEFAULT_USER: teapot
     #   RABBITMQ_DEFAULT_PASS: yourpassword
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
 
 volumes:
   sql-auth-data:
   sql-inventory-data:
   sql-orders-data:
   sql-payments-data:
+  rabbitmq-data:

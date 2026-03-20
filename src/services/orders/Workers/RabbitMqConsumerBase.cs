@@ -21,7 +21,7 @@ public abstract class RabbitMqConsumerBase : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var factory = new ConnectionFactory { HostName = _configuration["RabbitMQ:HostName"] ?? "localhost" };
+        var factory = new ConnectionFactory { HostName = _configuration["RabbitMq:Host"] ?? "localhost" };
         _connection = await factory.CreateConnectionAsync(stoppingToken);
         _channel = await _connection.CreateChannelAsync();
         await _channel.ExchangeDeclareAsync("commerce.events", ExchangeType.Topic);

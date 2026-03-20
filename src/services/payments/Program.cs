@@ -11,18 +11,6 @@ var config = builder.Configuration;
 
 builder.Services.AddOpenApi();
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("SpaDev", policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowCredentials()
-            .AllowAnyMethod();
-    });
-});
-
 builder.Services.AddDbContext<PaymentsDbContext>(options =>
     options.UseSqlServer(config.GetConnectionString("PaymentsDb")));
 
@@ -35,15 +23,17 @@ builder.Services.AddHostedService<PaymentProcessorWorker>();
 
 var app = builder.Build();
 
-app.UseCors("SpaDev");
-
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<PaymentsDbContext>();
-    await db.Database.MigrateAsync();
+    for (var i = 0; i < 10; i++)
+    {
+        try { await db.Database.MigrateAsync(); break; }
+        catch { await Task.Delay(3000); }
+    }
 }
 
 // --- Create PaymentIntent ---

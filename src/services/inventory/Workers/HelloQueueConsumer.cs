@@ -18,7 +18,7 @@ public class HelloQueueConsumer : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var hostName = _configuration["RabbitMQ:HostName"] ?? "localhost";
+        var hostName = _configuration["RabbitMq:Host"] ?? "localhost";
         var factory = new ConnectionFactory { HostName = hostName };
 
         _connection = await factory.CreateConnectionAsync(stoppingToken);

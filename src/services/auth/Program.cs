@@ -65,18 +65,6 @@ builder.Services.AddAuthorization();
 
 //builder.Services.AddOpenApi();
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("SpaDev", policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowCredentials()
-            .AllowAnyMethod();
-    });
-});
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -84,8 +72,6 @@ var app = builder.Build();
 // {
 //     app.MapOpenApi();
 // }
-
-app.UseCors("SpaDev");
 
 //app.UseHttpsRedirection();
 
@@ -97,21 +83,15 @@ app.MapControllers();
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
-    var services = scope.ServiceProvider;
-
-    try
+    var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
+    for (var i = 0; i < 10; i++)
     {
-        var db = services.GetRequiredService<AuthDbContext>();
-        await db.Database.MigrateAsync();
-        // optional: seed users here if you want
-        // var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        // await Seed.SeedUsers(userManager);
+        try { await db.Database.MigrateAsync(); break; }
+        catch { await Task.Delay(3000); }
     }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred applying migrations");
-    }
+    // optional: seed users here if you want
+    // var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    // await Seed.SeedUsers(userManager);
 }
 
 

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { authApi } from '../lib/api'
 import { useAuth } from '../lib/useAuth'
 import { useCart } from '../lib/useCart'
@@ -8,11 +8,13 @@ export function Navbar() {
   const navigate = useNavigate()
   const { isLoggedIn, setToken } = useAuth()
   const { count } = useCart()
+  const queryClient = useQueryClient()
 
   const logoutMutation = useMutation({
     mutationFn: authApi.logout,
     onSuccess: () => {
       setToken(null)
+      queryClient.clear()
       navigate({ to: '/login' })
     },
     onError: (error) => {

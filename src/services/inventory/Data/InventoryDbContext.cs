@@ -34,6 +34,19 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             .OnDelete(DeleteBehavior.NoAction);
 
         SeedProducts(modelBuilder);
+        SeedInventoryItems(modelBuilder);
+    }
+
+    private static void SeedInventoryItems(ModelBuilder modelBuilder)
+    {
+        var createdAt = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
+        modelBuilder.Entity<InventoryItem>().HasData(
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222201"), SerialNumber = "SN-001", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222202"), SerialNumber = "SN-002", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222203"), SerialNumber = "SN-003", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222204"), SerialNumber = "SN-004", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222205"), SerialNumber = "SN-005", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt }
+        );
     }
 
     private static void SeedProducts(ModelBuilder modelBuilder)

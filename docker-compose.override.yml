@@ -1,4 +1,110 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  sql-auth:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-auth.env
+    # platform: "linux/amd64" for emulation on arm
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql-auth-data:/var/opt/mssql
+
+  sql-inventory:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-inventory.env
+    # platform: "linux/amd64" for emulation on arm
+    ports:
+      - "1434:1433"
+    volumes:
+      - sql-inventory-data:/var/opt/mssql
+
+  sql-orders:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-orders.env
+    # platform: "linux/amd64" for emulation on arm
+    ports:
+      - "1435:1433"
+    volumes:
+      - sql-orders-data:/var/opt/mssql
+
+  sql-payments:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-payments.env
+    # platform: "linux/amd64" for emulation on arm
+    ports:
+      - "1436:1433"
+    volumes:
+      - sql-payments-data:/var/opt/mssql
+
+  auth:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+    env_file:
+      - ./.secrets/auth.env
+    ports:
+      - "5194:8080"
+    depends_on:
+      - sql-auth
+
+  inventory:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    ports:
+      - "5035:8080"
+    env_file:
+      - ./.secrets/inventory.env
+    depends_on:
+      - sql-inventory
+      - rabbitmq
+
+  orders:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    ports:
+      - "5079:8080"
+    env_file:
+      - ./.secrets/orders.env
+    depends_on:
+      - sql-orders
+      - rabbitmq
+
+  payments:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    ports:
+      - "5127:8080"
+    env_file:
+      - ./.secrets/payments.env
+    depends_on:
+      - sql-payments
+      - rabbitmq
+
   gateway:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
@@ -12,95 +118,14 @@ services:
     ports:
       - "5054:8080"
     depends_on:
-          - auth
-  auth:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-    env_file:
-      - ./.secrets/auth.env
-    ports:
-      - "5194:8080"
-
-  orders:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-    ports:
-      - "5079:8080"
-    env_file:
-      - ./.secrets/orders.env
-
-  inventory:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-    ports:
-      - "5035:8080"
-    env_file:
-      - ./.secrets/inventory.env
-
-  payments:
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_HTTP_PORTS=8080
-    ports:
-      - "5127:8080"
-    env_file:
-      - ./.secrets/payments.env
-  sql-auth:
-      image: mcr.microsoft.com/mssql/server:2022-latest
-      #container_name: sql
-      environment:
-        ACCEPT_EULA: "Y"
-      env_file:
-      - ./.secrets/sql-auth.env
-      # platform: "linux/amd64" for emulation on arm
-      ports:
-        - "1433:1433"
-      volumes:
-        - sql-auth-data:/var/opt/mssql
-  sql-inventory:
-      image: mcr.microsoft.com/mssql/server:2022-latest
-      #container_name: sql
-      environment:
-        ACCEPT_EULA: "Y"
-      env_file:
-      - ./.secrets/sql-inventory.env
-      # platform: "linux/amd64" for emulation on arm
-      ports:
-        - "1434:1433"
-      volumes:
-        - sql-inventory-data:/var/opt/mssql
-  sql-orders:
-      image: mcr.microsoft.com/mssql/server:2022-latest
-      #container_name: sql
-      environment:
-        ACCEPT_EULA: "Y"
-      env_file:
-      - ./.secrets/sql-orders.env
-      # platform: "linux/amd64" for emulation on arm
-      ports:
-        - "1435:1433"
-      volumes:
-        - sql-orders-data:/var/opt/mssql
-  
-  sql-payments:
-      image: mcr.microsoft.com/mssql/server:2022-latest
-      #container_name: sql
-      environment:
-        ACCEPT_EULA: "Y"
-      env_file:
-      - ./.secrets/sql-payments.env
-      # platform: "linux/amd64" for emulation on arm
-      ports:
-        - "1436:1433"
-      volumes:
-        - sql-payments-data:/var/opt/mssql
+      - auth
+      - inventory
+      - orders
+      - payments
 
 volumes:
   sql-auth-data:
   sql-inventory-data:
   sql-orders-data:
-
-
+  sql-payments-data:
+  rabbitmq-data:
