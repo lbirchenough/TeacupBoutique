@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as BookingsRouteImport } from './routes/bookings'
@@ -27,9 +29,19 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyOrdersRoute = MyOrdersRouteImport.update({
+  id: '/my-orders',
+  path: '/my-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -89,7 +101,9 @@ export interface FileRoutesByFullPath {
   '/bookings': typeof BookingsRouteWithChildren
   '/cart': typeof CartRoute
   '/login': typeof LoginRoute
+  '/my-orders': typeof MyOrdersRoute
   '/products': typeof ProductsRouteWithChildren
+  '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/bookings/$bookingId': typeof BookingsBookingIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -102,6 +116,8 @@ export interface FileRoutesByTo {
   '/availability': typeof AvailabilityRoute
   '/cart': typeof CartRoute
   '/login': typeof LoginRoute
+  '/my-orders': typeof MyOrdersRoute
+  '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/bookings/$bookingId': typeof BookingsBookingIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -116,7 +132,9 @@ export interface FileRoutesById {
   '/bookings': typeof BookingsRouteWithChildren
   '/cart': typeof CartRoute
   '/login': typeof LoginRoute
+  '/my-orders': typeof MyOrdersRoute
   '/products': typeof ProductsRouteWithChildren
+  '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/bookings/$bookingId': typeof BookingsBookingIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
@@ -132,7 +150,9 @@ export interface FileRouteTypes {
     | '/bookings'
     | '/cart'
     | '/login'
+    | '/my-orders'
     | '/products'
+    | '/profile'
     | '/register'
     | '/bookings/$bookingId'
     | '/orders/$orderId'
@@ -145,6 +165,8 @@ export interface FileRouteTypes {
     | '/availability'
     | '/cart'
     | '/login'
+    | '/my-orders'
+    | '/profile'
     | '/register'
     | '/bookings/$bookingId'
     | '/orders/$orderId'
@@ -158,7 +180,9 @@ export interface FileRouteTypes {
     | '/bookings'
     | '/cart'
     | '/login'
+    | '/my-orders'
     | '/products'
+    | '/profile'
     | '/register'
     | '/bookings/$bookingId'
     | '/orders/$orderId'
@@ -173,7 +197,9 @@ export interface RootRouteChildren {
   BookingsRoute: typeof BookingsRouteWithChildren
   CartRoute: typeof CartRoute
   LoginRoute: typeof LoginRoute
+  MyOrdersRoute: typeof MyOrdersRoute
   ProductsRoute: typeof ProductsRouteWithChildren
+  ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
 }
@@ -187,11 +213,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products': {
       id: '/products'
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-orders': {
+      id: '/my-orders'
+      path: '/my-orders'
+      fullPath: '/my-orders'
+      preLoaderRoute: typeof MyOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -301,7 +341,9 @@ const rootRouteChildren: RootRouteChildren = {
   BookingsRoute: BookingsRouteWithChildren,
   CartRoute: CartRoute,
   LoginRoute: LoginRoute,
+  MyOrdersRoute: MyOrdersRoute,
   ProductsRoute: ProductsRouteWithChildren,
+  ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   OrdersOrderIdRoute: OrdersOrderIdRoute,
 }

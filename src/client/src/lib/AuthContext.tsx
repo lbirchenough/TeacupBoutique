@@ -15,6 +15,19 @@ function parseIsAdmin(token: string): boolean {
   }
 }
 
+function parseEmail(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return (
+      payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ??
+      payload['email'] ??
+      null
+    )
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(authStore.getAccessToken())
   const [initialised, setInitialised] = useState(false)
@@ -58,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     isLoggedIn: !!accessToken,
     isAdmin: accessToken ? parseIsAdmin(accessToken) : false,
+    email: accessToken ? parseEmail(accessToken) : null,
     accessToken,
     setToken,
   }
