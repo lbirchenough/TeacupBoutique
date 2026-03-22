@@ -1,5 +1,7 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using orders.Data;
@@ -79,6 +81,23 @@ namespace orders.Controllers
             if (order is null)
                 return NotFound();
             return Ok(order);
+        }
+
+        [Authorize]
+        [HttpGet("mine")]
+        public async Task<IActionResult> GetMyOrders()
+        {
+            var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
+            if (email is null) return Unauthorized();
+
+            var orders = await _context.Orders
+                .Include(o => o.OrderItems)
+                .Where(o => o.CustomerEmail == email)
+                .OrderByDescending(o => o.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return Ok(orders);
         }
 
         // [HttpPut("{id:guid}")]

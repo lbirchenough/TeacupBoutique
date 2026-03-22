@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ordersApi } from '../lib/ordersApi'
 import { StripePaymentForm } from '../components/StripePaymentForm'
+import { useAuth } from '../lib/useAuth'
 import type { OrderDetail, OrderStatus } from '../lib/types'
 
 export const Route = createFileRoute('/orders/$orderId')({
@@ -21,6 +22,7 @@ const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 
 
 function OrderDetailPage() {
     const { orderId } = Route.useParams()
+    const { isLoggedIn } = useAuth()
 
     const { data: order, isPending, isError, error } = useQuery<OrderDetail>({
         queryKey: ['order', orderId],
@@ -127,6 +129,23 @@ function OrderDetailPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Registration prompt for guests */}
+                {!isLoggedIn && (
+                    <div className="bg-cream-dark border border-gold/30 px-6 py-5 flex items-center justify-between gap-6">
+                        <div>
+                            <p className="font-serif text-brown text-lg">Track this order</p>
+                            <p className="text-sm text-brown-light mt-1">Create a free account to view and manage your bookings.</p>
+                        </div>
+                        <Link
+                            to="/register"
+                            search={{ email: order.customerEmail }}
+                            className="shrink-0 text-xs tracking-widest uppercase bg-brown text-cream px-6 py-3 hover:bg-brown-mid transition-colors"
+                        >
+                            Create Account
+                        </Link>
+                    </div>
+                )}
 
                 {/* Payment */}
                 {order.status === 'AwaitingPayment' && (

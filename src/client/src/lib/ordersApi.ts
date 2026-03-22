@@ -1,3 +1,4 @@
+import { authStore } from './authStore'
 import type { CreateOrderRequest, OrderDetail } from './types'
 
 const ORDERS_API_BASE_URL = import.meta.env.VITE_ORDERS_API_URL || 'http://localhost:5054'
@@ -18,6 +19,18 @@ export const ordersApi = {
 
     getOrder: async (orderId: string): Promise<OrderDetail> => {
         const response = await fetch(`${ORDERS_API_BASE_URL}/api/orders/${orderId}`)
+        if (!response.ok) {
+            const message = await response.text()
+            throw new Error(message || `Request failed with status ${response.status}`)
+        }
+        return response.json()
+    },
+
+    getMyOrders: async (): Promise<OrderDetail[]> => {
+        const token = authStore.getAccessToken()
+        const response = await fetch(`${ORDERS_API_BASE_URL}/api/orders/mine`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
         if (!response.ok) {
             const message = await response.text()
             throw new Error(message || `Request failed with status ${response.status}`)
