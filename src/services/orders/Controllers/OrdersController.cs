@@ -1,7 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using System.Text.Json;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using orders.Data;
@@ -9,7 +5,6 @@ using orders.Entities;
 using orders.Interfaces;
 using orders.Models;
 using orders.Services;
-using RabbitMQ.Client;
 
 namespace orders.Controllers
 {
@@ -83,21 +78,40 @@ namespace orders.Controllers
             return Ok(order);
         }
 
-        [Authorize]
         [HttpGet("mine")]
         public async Task<IActionResult> GetMyOrders()
         {
-            var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value;
-            if (email is null) return Unauthorized();
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+            if (!Guid.TryParse(userIdStr, out var userId)) return Unauthorized();
 
             var orders = await _context.Orders
                 .Include(o => o.OrderItems)
-                .Where(o => o.CustomerEmail == email)
+                .Where(o => o.UserId == userId)
                 .OrderByDescending(o => o.CreatedAt)
                 .AsNoTracking()
                 .ToListAsync();
 
             return Ok(orders);
+        }
+
+        [HttpPatch("claim")]
+        public async Task<IActionResult> ClaimOrders()
+        {
+            var email = Request.Headers["X-User-Email"].FirstOrDefault();
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(email) || !Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            var orders = await _context.Orders
+                .Where(o => o.CustomerEmail == email && o.UserId == null)
+                .ToListAsync();
+
+            foreach (var order in orders)
+                order.UserId = userId;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
         // [HttpPut("{id:guid}")]

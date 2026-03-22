@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { authApi } from '../lib/api'
 import { useAuth } from '../lib/useAuth'
+import { ordersApi } from '../lib/ordersApi'
 
 export const Route = createFileRoute('/register')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -26,9 +27,10 @@ function RegisterPage() {
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       setToken(data.accessToken)
-      navigate({ to: prefillEmail ? '/my-orders' : '/' })
+      await ordersApi.claimOrders()
+      navigate({ to: '/my-orders' })
     },
     onError: (error) => {
       console.error('Register error:', error)

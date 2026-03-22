@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { authApi } from '../lib/api'
 import { useAuth } from '../lib/useAuth'
+import { ordersApi } from '../lib/ordersApi'
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -18,10 +19,10 @@ function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: authApi.login,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       console.log('Login response:', data)
       setToken(data.accessToken)
-      // Navigate to home after successful login
+      await ordersApi.claimOrders()
       navigate({ to: '/' })
     },
     onError: (error) => {

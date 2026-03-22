@@ -37,4 +37,12 @@ export const ordersApi = {
         }
         return response.json()
     },
+
+    claimOrders: async (): Promise<void> => {
+        const token = authStore.getAccessToken()
+        await fetch(`${ORDERS_API_BASE_URL}/api/orders/claim`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}` },
+        })
+    },
 }

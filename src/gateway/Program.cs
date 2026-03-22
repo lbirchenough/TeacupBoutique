@@ -1,6 +1,8 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +11,7 @@ builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -41,7 +44,29 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(context =>
+    {
+        if (context.Route.RouteId is "route4-mine" or "route4-claim")
+        {
+            context.AddRequestTransform(transformContext =>
+            {
+                var user = transformContext.HttpContext.User;
+                var userId = user.FindFirst("sub")?.Value;
+                if (userId is not null)
+                    transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-User-Id", userId);
+
+                if (context.Route.RouteId == "route4-claim")
+                {
+                    var email = user.FindFirst("email")?.Value;
+                    if (email is not null)
+                        transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-User-Email", email);
+                }
+
+                return ValueTask.CompletedTask;
+            });
+        }
+    });
 
 var app = builder.Build();
 

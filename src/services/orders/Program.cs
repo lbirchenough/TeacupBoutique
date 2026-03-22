@@ -1,7 +1,4 @@
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using orders.Data;
 using orders.Interfaces;
 using orders.Services;
@@ -35,24 +32,6 @@ builder.Services.AddControllers()
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-var jwtSection = builder.Configuration.GetSection("Jwt");
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = jwtSection["Issuer"],
-            ValidateAudience = true,
-            ValidAudience = jwtSection["Audience"],
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!)),
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromSeconds(30)
-        };
-    });
-builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -63,9 +42,6 @@ if (app.Environment.IsDevelopment())
 }
 
 //app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapControllers();
 
