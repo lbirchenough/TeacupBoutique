@@ -13,7 +13,7 @@ services:
       ACCEPT_EULA: "Y"
     env_file:
       - ./.secrets/sql-auth.env
-    # platform: "linux/amd64" for emulation on arm
+    platform: "linux/amd64"
     ports:
       - "1433:1433"
     volumes:
@@ -25,7 +25,7 @@ services:
       ACCEPT_EULA: "Y"
     env_file:
       - ./.secrets/sql-inventory.env
-    # platform: "linux/amd64" for emulation on arm
+    platform: "linux/amd64"
     ports:
       - "1434:1433"
     volumes:
@@ -37,7 +37,7 @@ services:
       ACCEPT_EULA: "Y"
     env_file:
       - ./.secrets/sql-orders.env
-    # platform: "linux/amd64" for emulation on arm
+    platform: "linux/amd64"
     ports:
       - "1435:1433"
     volumes:
@@ -49,7 +49,7 @@ services:
       ACCEPT_EULA: "Y"
     env_file:
       - ./.secrets/sql-payments.env
-    # platform: "linux/amd64" for emulation on arm
+    platform: "linux/amd64"
     ports:
       - "1436:1433"
     volumes:
@@ -123,9 +123,19 @@ services:
       - orders
       - payments
 
+  notifications:
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - RabbitMq__Host=rabbitmq
+      - FrontendUrl=http://localhost:5173
+    env_file:
+      - ./.secrets/notifications.env
+    depends_on:
+      - rabbitmq
 volumes:
   sql-auth-data:
   sql-inventory-data:
   sql-orders-data:
   sql-payments-data:
   rabbitmq-data:
+

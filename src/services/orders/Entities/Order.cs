@@ -29,6 +29,9 @@ public class Order
     //Nullable for guest checkout
     public Guid? UserId { get; set; }
 
+    /// <summary>Secret token for guest order tracking links.</summary>
+    public Guid AccessToken { get; set; } = Guid.NewGuid();
+
     // Denormalized customer snapshot at order time
     public required string CustomerName { get; set; }
     public required string CustomerEmail { get; set; }

@@ -22,8 +22,23 @@ public abstract class RabbitMqConsumerBase : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var factory = new ConnectionFactory { HostName = _configuration["RabbitMq:Host"] ?? "localhost" };
-        _connection = await factory.CreateConnectionAsync(stoppingToken);
-        _channel = await _connection.CreateChannelAsync();
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                _connection = await factory.CreateConnectionAsync(stoppingToken);
+                break;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($" [notifications] RabbitMQ not ready, retrying in 5s... ({ex.Message})");
+                await Task.Delay(5000, stoppingToken);
+            }
+        }
+        if (stoppingToken.IsCancellationRequested) return;
+
+        _channel = await _connection!.CreateChannelAsync();
         await _channel.ExchangeDeclareAsync("commerce.events", ExchangeType.Topic);
 
         await _channel.QueueDeclareAsync(queue: QueueName, durable: true, exclusive: false, autoDelete: false);

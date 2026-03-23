@@ -33,7 +33,7 @@ function CartPage() {
         mutationFn: (dto: CreateOrderRequest) => ordersApi.createOrder(dto),
         onSuccess: (order) => {
             clear()
-            navigate({ to: '/orders/$orderId', params: { orderId: order.id } })
+            navigate({ to: '/orders/$orderNumber', params: { orderNumber: order.orderNumber }, search: { token: order.accessToken } })
         },
     })
 

@@ -3,10 +3,13 @@ using notifications.Models;
 
 namespace notifications.Services;
 
-public class NotificationService(IEmailService emailService) : INotificationService
+public class NotificationService(IEmailService emailService, IConfiguration config) : INotificationService
 {
     public async Task SendOrderConfirmedAsync(OrderConfirmedEvent evt)
     {
+        var frontendUrl = config["FrontendUrl"] ?? "http://localhost:5173";
+        var trackingUrl = $"{frontendUrl}/orders/{evt.OrderNumber}?token={evt.AccessToken}";
+
         var itemsHtml = string.Join("", evt.Items.Select(i =>
             $"<tr><td style='padding:4px 8px;'>{i.Name}</td><td style='padding:4px 8px;'>x{i.Quantity}</td><td style='padding:4px 8px;'>${i.UnitPrice:F2}/day</td></tr>"));
 
@@ -29,6 +32,13 @@ public class NotificationService(IEmailService emailService) : INotificationServ
                 </tr></thead>
                 <tbody>{itemsHtml}</tbody>
               </table>
+              <p style="margin-top:24px;">
+                <a href="{trackingUrl}" style="display:inline-block; background:#c4953a; color:#fff; padding:10px 20px; text-decoration:none; border-radius:4px;">Track Your Order</a>
+              </p>
+              <p style="margin-top:16px; padding:16px; background:#f5ede0; border-radius:4px; font-size:14px;">
+                Want to view your order history anytime?
+                <a href="{frontendUrl}/register" style="color:#c4953a;">Create a free account</a> using this email address and all your orders will be linked automatically.
+              </p>
               <p style="margin-top:24px; color:#c4953a;">We look forward to making your occasion truly special.</p>
             </div>
             """;

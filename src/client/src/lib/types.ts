@@ -75,6 +75,7 @@ export type PaymentStatus = 'Pending' | 'Paid' | 'Refunded'
 export interface OrderDetail {
     id: string;
     orderNumber: string;
+    accessToken: string;
     userId?: string | null;
     customerName: string;
     customerEmail: string;

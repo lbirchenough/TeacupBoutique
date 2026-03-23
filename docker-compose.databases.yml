@@ -7,7 +7,7 @@ services:
         ACCEPT_EULA: "Y"
       env_file:
       - ./.secrets/sql-auth.env
-      # platform: "linux/amd64" for emulation on arm
+      platform: "linux/amd64"
       ports:
         - "1433:1433"
       volumes:
@@ -19,7 +19,7 @@ services:
         ACCEPT_EULA: "Y"
       env_file:
       - ./.secrets/sql-inventory.env
-      # platform: "linux/amd64" for emulation on arm
+      platform: "linux/amd64"
       ports:
         - "1434:1433"
       volumes:
@@ -31,7 +31,7 @@ services:
         ACCEPT_EULA: "Y"
       env_file:
       - ./.secrets/sql-orders.env
-      # platform: "linux/amd64" for emulation on arm
+      platform: "linux/amd64"
       ports:
         - "1435:1433"
       volumes:
@@ -44,7 +44,7 @@ services:
         ACCEPT_EULA: "Y"
       env_file:
       - ./.secrets/sql-payments.env
-      # platform: "linux/amd64" for emulation on arm
+      platform: "linux/amd64"
       ports:
         - "1436:1433"
       volumes:

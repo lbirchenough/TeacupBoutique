@@ -32,3 +32,10 @@ services:
       context: .
       dockerfile: src/services/orders/Dockerfile
 
+
+  notifications:
+    image: ${DOCKER_REGISTRY-}notifications
+    build:
+      context: .
+      dockerfile: src/services/notifications/Dockerfile
+

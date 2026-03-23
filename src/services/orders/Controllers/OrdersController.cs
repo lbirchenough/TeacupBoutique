@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using orders.Data;
@@ -7,7 +5,6 @@ using orders.Entities;
 using orders.Interfaces;
 using orders.Models;
 using orders.Services;
-using RabbitMQ.Client;
 
 namespace orders.Controllers
 {
@@ -65,20 +62,62 @@ namespace orders.Controllers
 
             await orderEventService.PublishOrder(order);
 
-            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+            return CreatedAtAction(nameof(GetOrder), new { orderNumber = order.OrderNumber }, order);
         }
 
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetOrder(Guid id)
+        [HttpGet("{orderNumber}")]
+        public async Task<IActionResult> GetOrder(string orderNumber, [FromQuery] Guid? token)
         {
-            
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == id);
-            if (order is null)
-                return NotFound();
+                .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
+
+            if (order is null) return NotFound();
+
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+            var isOwner = Guid.TryParse(userIdStr, out var userId) && order.UserId == userId;
+            var hasValidToken = token.HasValue && order.AccessToken == token.Value;
+
+            if (!isOwner && !hasValidToken) return StatusCode(403);
+
             return Ok(order);
+        }
+
+        [HttpGet("mine")]
+        public async Task<IActionResult> GetMyOrders()
+        {
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+            if (!Guid.TryParse(userIdStr, out var userId)) return Unauthorized();
+
+            var orders = await _context.Orders
+                .Include(o => o.OrderItems)
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return Ok(orders);
+        }
+
+        [HttpPatch("claim")]
+        public async Task<IActionResult> ClaimOrders()
+        {
+            var email = Request.Headers["X-User-Email"].FirstOrDefault();
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+
+            if (string.IsNullOrEmpty(email) || !Guid.TryParse(userIdStr, out var userId))
+                return Unauthorized();
+
+            var orders = await _context.Orders
+                .Where(o => o.CustomerEmail == email && o.UserId == null)
+                .ToListAsync();
+
+            foreach (var order in orders)
+                order.UserId = userId;
+
+            await _context.SaveChangesAsync();
+            return NoContent();
         }
 
         // [HttpPut("{id:guid}")]

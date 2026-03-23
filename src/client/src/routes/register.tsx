@@ -2,14 +2,21 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { authApi } from '../lib/api'
+import { useAuth } from '../lib/useAuth'
+import { ordersApi } from '../lib/ordersApi'
 
 export const Route = createFileRoute('/register')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    email: typeof search.email === 'string' ? search.email : undefined,
+  }),
   component: RegisterPage,
 })
 
 function RegisterPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
+  const { setToken } = useAuth()
+  const { email: prefillEmail } = Route.useSearch()
+  const [email, setEmail] = useState(prefillEmail ?? '')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [errors, setErrors] = useState<{
@@ -20,10 +27,10 @@ function RegisterPage() {
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
-    onSuccess: (data) => {
-      console.log('Register response:', data)
-      // Navigate to home after successful registration
-      navigate({ to: '/' })
+    onSuccess: async (data) => {
+      setToken(data.accessToken)
+      await ordersApi.claimOrders()
+      navigate({ to: '/my-orders' })
     },
     onError: (error) => {
       console.error('Register error:', error)
@@ -70,6 +77,11 @@ function RegisterPage() {
     <div className="max-w-md mx-auto px-4 py-12">
       <div className="bg-white shadow-md rounded-lg px-8 pt-6 pb-8">
         <h1 className="text-2xl font-bold text-center mb-6">Register</h1>
+        {prefillEmail && (
+          <p className="text-sm text-center text-brown-light mb-6">
+            Create an account to track your order and manage future bookings.
+          </p>
+        )}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
@@ -128,6 +140,11 @@ function RegisterPage() {
               <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
             )}
           </div>
+          {registerMutation.isError && (
+            <p className="text-red-500 text-xs mb-4 text-center">
+              {registerMutation.error?.message || 'Registration failed. Please try again.'}
+            </p>
+          )}
           <div className="flex items-center justify-between">
             <button
               type="submit"
@@ -142,4 +159,3 @@ function RegisterPage() {
     </div>
   )
 }
-

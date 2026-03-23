@@ -35,7 +35,7 @@ export const authApi = {
     return await response.json()
   },
 
-  register: async (data: RegisterRequest) => {
+  register: async (data: RegisterRequest): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
@@ -44,7 +44,13 @@ export const authApi = {
       credentials: 'include',
       body: JSON.stringify(data),
     })
-    return response.json()
+
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'An error occurred while registering')
+    }
+
+    return await response.json()
   },
 
   logout: async () => {

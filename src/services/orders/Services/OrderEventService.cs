@@ -75,6 +75,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         {
             OrderId = order.Id,
             OrderNumber = order.OrderNumber,
+            AccessToken = order.AccessToken,
             CustomerName = order.CustomerName,
             CustomerEmail = order.CustomerEmail,
             Total = order.Total,

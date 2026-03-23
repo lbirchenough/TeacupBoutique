@@ -3,6 +3,7 @@ namespace notifications.Models;
 public record OrderConfirmedEvent(
     Guid OrderId,
     string OrderNumber,
+    Guid AccessToken,
     string CustomerName,
     string CustomerEmail,
     decimal Total,
