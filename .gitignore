@@ -7,6 +7,9 @@
 .env
 .secrets/
 
+# TanStack Router generated file
+src/client/src/routeTree.gen.ts
+
 # User-specific files
 *.rsuser
 *.suo
