@@ -25,19 +25,19 @@ export const inventoryApi = {
         return handleResponse(response)
     },
 
-    createProduct: async (dto: ProductCreateDto) => {
+    createProduct: async (dto: ProductCreateDto, token: string) => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(dto),
         })
         return handleResponse(response)
     },
 
-    updateProduct: async (productId: string, dto: ProductUpdateDto) => {
+    updateProduct: async (productId: string, dto: ProductUpdateDto, token: string) => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(dto),
         })
         return handleResponse(response)
@@ -49,17 +49,18 @@ export const inventoryApi = {
         return handleResponse(response)
     },
 
-    createInventoryItem: async (productId: string) => {
+    createInventoryItem: async (productId: string, token: string) => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items`, {
             method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
         })
         return handleResponse(response)
     },
 
-    updateInventoryItem: async (productId: string, itemId: string, dto: InventoryItemUpdateDto) => {
+    updateInventoryItem: async (productId: string, itemId: string, dto: InventoryItemUpdateDto, token: string) => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items/${itemId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(dto),
         })
         return handleResponse(response)
@@ -70,9 +71,10 @@ export const inventoryApi = {
         return handleResponse(response)
     },
 
-    deleteInventoryItem: async (productId: string, itemId: string) => {
+    deleteInventoryItem: async (productId: string, itemId: string, token: string) => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items/${itemId}`, {
             method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
         })
         return handleResponse(response)
     },

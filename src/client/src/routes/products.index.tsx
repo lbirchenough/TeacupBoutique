@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { inventoryApi } from '../lib/inventoryApi'
 import { ProductForm } from '../components/ProductForm'
 import { cartStore } from '../lib/cartStore'
+import { useAuth } from '../lib/useAuth'
 import type { ProductCreateDto, ProductListDto } from '../lib/types'
 
 const FALLBACK_IMAGES = [
@@ -21,6 +22,7 @@ export const Route = createFileRoute('/products/')({
 function ProductsPage() {
     const queryClient = useQueryClient()
     const [showForm, setShowForm] = useState(false)
+    const { isAdmin, accessToken } = useAuth()
 
     const { isPending, isError, data, error } = useQuery<ProductListDto[]>({
         queryKey: ['products'],
@@ -28,7 +30,7 @@ function ProductsPage() {
     })
 
     const createMutation = useMutation({
-        mutationFn: (dto: ProductCreateDto) => inventoryApi.createProduct(dto),
+        mutationFn: (dto: ProductCreateDto) => inventoryApi.createProduct(dto, accessToken!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['products'] })
             setShowForm(false)
@@ -48,14 +50,16 @@ function ProductsPage() {
 
             <div className="max-w-6xl mx-auto px-6 py-14">
                 {/* Admin controls */}
-                <div className="flex justify-end mb-10">
-                    <button
-                        onClick={() => setShowForm(s => !s)}
-                        className="text-xs tracking-widest uppercase text-brown-mid border border-brown/20 px-4 py-2 hover:bg-cream-dark transition-colors"
-                    >
-                        {showForm ? 'Cancel' : '+ Add Product'}
-                    </button>
-                </div>
+                {isAdmin && (
+                    <div className="flex justify-end mb-10">
+                        <button
+                            onClick={() => setShowForm(s => !s)}
+                            className="text-xs tracking-widest uppercase text-brown-mid border border-brown/20 px-4 py-2 hover:bg-cream-dark transition-colors"
+                        >
+                            {showForm ? 'Cancel' : '+ Add Product'}
+                        </button>
+                    </div>
+                )}
 
                 {showForm && (
                     <div className="mb-12 bg-white border border-gold/20 rounded-xl p-6 shadow-sm">

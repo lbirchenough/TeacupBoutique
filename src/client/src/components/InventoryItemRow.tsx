@@ -4,6 +4,7 @@ import type { Condition, InventoryItem, InventoryItemUpdateDto, ItemStatus } fro
 interface Props {
     productId: string
     item: InventoryItem
+    isAdmin: boolean
     onUpdate: (itemId: string, dto: InventoryItemUpdateDto) => Promise<void>
     onDelete: (itemId: string) => Promise<void>
 }
@@ -27,7 +28,7 @@ const rowBorder: Record<ItemStatus, string> = {
     Retired: 'border-gray-300',
 }
 
-export function InventoryItemRow({ item, onUpdate, onDelete }: Props) {
+export function InventoryItemRow({ item, isAdmin, onUpdate, onDelete }: Props) {
     const [expanded, setExpanded] = useState(false)
     const [editing, setEditing] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -84,7 +85,7 @@ export function InventoryItemRow({ item, onUpdate, onDelete }: Props) {
                     )}
                 </div>
                 <div className="flex items-center gap-3 ml-4 shrink-0">
-                    {expanded && !editing && (
+                    {isAdmin && expanded && !editing && (
                         <button
                             onClick={e => { e.stopPropagation(); setEditing(true) }}
                             className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
@@ -92,13 +93,15 @@ export function InventoryItemRow({ item, onUpdate, onDelete }: Props) {
                             Edit
                         </button>
                     )}
-                    <button
-                        onClick={e => { e.stopPropagation(); handleDelete() }}
-                        disabled={deleting}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
-                    >
-                        {deleting ? '…' : 'Delete'}
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={e => { e.stopPropagation(); handleDelete() }}
+                            disabled={deleting}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                        >
+                            {deleting ? '…' : 'Delete'}
+                        </button>
+                    )}
                     <span className="text-gray-400 text-xs">{expanded ? '▲' : '▼'}</span>
                 </div>
             </div>

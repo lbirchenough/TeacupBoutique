@@ -5,6 +5,7 @@ import { inventoryApi } from '../lib/inventoryApi'
 import { ProductForm } from '../components/ProductForm'
 import { InventoryItemRow } from '../components/InventoryItemRow'
 import { cartStore } from '../lib/cartStore'
+import { useAuth } from '../lib/useAuth'
 import type { InventoryItem, InventoryItemUpdateDto, ProductDetail, ProductUpdateDto } from '../lib/types'
 
 export const Route = createFileRoute('/products/$productId')({
@@ -15,6 +16,7 @@ function ProductDetailPage() {
     const { productId } = Route.useParams()
     const queryClient = useQueryClient()
     const [editingProduct, setEditingProduct] = useState(false)
+    const { isAdmin, accessToken } = useAuth()
 
     const productQuery = useQuery<ProductDetail>({
         queryKey: ['product', productId],
@@ -24,10 +26,11 @@ function ProductDetailPage() {
     const itemsQuery = useQuery<InventoryItem[]>({
         queryKey: ['product-items', productId],
         queryFn: () => inventoryApi.getProductItems(productId),
+        enabled: isAdmin,
     })
 
     const updateProductMutation = useMutation({
-        mutationFn: (dto: ProductUpdateDto) => inventoryApi.updateProduct(productId, dto),
+        mutationFn: (dto: ProductUpdateDto) => inventoryApi.updateProduct(productId, dto, accessToken!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['product', productId] })
             queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -36,7 +39,7 @@ function ProductDetailPage() {
     })
 
     const addItemMutation = useMutation({
-        mutationFn: () => inventoryApi.createInventoryItem(productId),
+        mutationFn: () => inventoryApi.createInventoryItem(productId, accessToken!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['product-items', productId] })
         },
@@ -44,14 +47,14 @@ function ProductDetailPage() {
 
     const updateItemMutation = useMutation({
         mutationFn: ({ itemId, dto }: { itemId: string; dto: InventoryItemUpdateDto }) =>
-            inventoryApi.updateInventoryItem(productId, itemId, dto),
+            inventoryApi.updateInventoryItem(productId, itemId, dto, accessToken!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['product-items', productId] })
         },
     })
 
     const deleteItemMutation = useMutation({
-        mutationFn: (itemId: string) => inventoryApi.deleteInventoryItem(productId, itemId),
+        mutationFn: (itemId: string) => inventoryApi.deleteInventoryItem(productId, itemId, accessToken!),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['product-items', productId] })
         },
@@ -93,12 +96,14 @@ function ProductDetailPage() {
                                 >
                                     Add to Cart
                                 </button>
-                                <button
-                                    onClick={() => setEditingProduct(e => !e)}
-                                    className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-                                >
-                                    {editingProduct ? 'Cancel' : 'Edit'}
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        onClick={() => setEditingProduct(e => !e)}
+                                        className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                    >
+                                        {editingProduct ? 'Cancel' : 'Edit'}
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -130,7 +135,7 @@ function ProductDetailPage() {
                     </div>
 
                     {/* Inventory items section */}
-                    <div>
+                    {isAdmin && <div>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-gray-800">
                                 Inventory Items
@@ -140,13 +145,15 @@ function ProductDetailPage() {
                                     </span>
                                 )}
                             </h2>
-                            <button
-                                onClick={() => addItemMutation.mutate()}
-                                disabled={addItemMutation.isPending}
-                                className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                            >
-                                {addItemMutation.isPending ? 'Adding…' : '+ Add Item'}
-                            </button>
+                            {isAdmin && (
+                                <button
+                                    onClick={() => addItemMutation.mutate()}
+                                    disabled={addItemMutation.isPending}
+                                    className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                                >
+                                    {addItemMutation.isPending ? 'Adding…' : '+ Add Item'}
+                                </button>
+                            )}
                         </div>
 
                         {itemsQuery.isPending && <p className="text-gray-500 text-sm">Loading items…</p>}
@@ -162,12 +169,13 @@ function ProductDetailPage() {
                                     key={item.id}
                                     productId={productId}
                                     item={item}
+                                    isAdmin={isAdmin}
                                     onUpdate={(itemId, dto) => updateItemMutation.mutateAsync({ itemId, dto })}
                                     onDelete={itemId => deleteItemMutation.mutateAsync(itemId)}
                                 />
                             ))}
                         </div>
-                    </div>
+                    </div>}
                 </>
             )}
         </div>
