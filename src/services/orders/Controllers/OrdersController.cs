@@ -62,19 +62,25 @@ namespace orders.Controllers
 
             await orderEventService.PublishOrder(order);
 
-            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+            return CreatedAtAction(nameof(GetOrder), new { orderNumber = order.OrderNumber }, order);
         }
 
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetOrder(Guid id)
+        [HttpGet("{orderNumber}")]
+        public async Task<IActionResult> GetOrder(string orderNumber, [FromQuery] Guid? token)
         {
-            
             var order = await _context.Orders
                 .Include(o => o.OrderItems)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == id);
-            if (order is null)
-                return NotFound();
+                .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
+
+            if (order is null) return NotFound();
+
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+            var isOwner = Guid.TryParse(userIdStr, out var userId) && order.UserId == userId;
+            var hasValidToken = token.HasValue && order.AccessToken == token.Value;
+
+            if (!isOwner && !hasValidToken) return StatusCode(403);
+
             return Ok(order);
         }
 

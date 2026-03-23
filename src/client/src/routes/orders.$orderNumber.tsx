@@ -2,10 +2,12 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ordersApi } from '../lib/ordersApi'
 import { StripePaymentForm } from '../components/StripePaymentForm'
-import { useAuth } from '../lib/useAuth'
 import type { OrderDetail, OrderStatus } from '../lib/types'
 
-export const Route = createFileRoute('/orders/$orderId')({
+export const Route = createFileRoute('/orders/$orderNumber')({
+    validateSearch: (search: Record<string, unknown>) => ({
+        token: typeof search.token === 'string' ? search.token : undefined,
+    }),
     component: OrderDetailPage,
 })
 
@@ -21,17 +23,20 @@ const statusConfig: Record<OrderStatus, { label: string; bg: string; text: strin
 const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 'OutOfStock']
 
 function OrderDetailPage() {
-    const { orderId } = Route.useParams()
-    const { isLoggedIn } = useAuth()
+    const { orderNumber } = Route.useParams()
+    const { token } = Route.useSearch()
+
 
     const { data: order, isPending, isError, error } = useQuery<OrderDetail>({
-        queryKey: ['order', orderId],
-        queryFn: () => ordersApi.getOrder(orderId),
+        queryKey: ['order', orderNumber, token],
+        queryFn: () => ordersApi.getOrder(orderNumber, token),
         refetchInterval: (query) => {
+            if (query.state.status === 'error') return false
             const status = query.state.data?.status
             if (!status || !terminalStatuses.includes(status)) return 2000
             return false
         },
+        retry: false,
     })
 
     if (isPending) return (
@@ -39,11 +44,26 @@ function OrderDetailPage() {
             <p className="font-serif text-lg text-brown-light">Loading your order…</p>
         </div>
     )
-    if (isError) return (
-        <div className="max-w-3xl mx-auto px-6 py-20 text-center">
-            <p className="text-red-600">Error: {error.message}</p>
-        </div>
-    )
+    if (isError) {
+        const status = error.message.startsWith('403') ? 403 : error.message.startsWith('404') ? 404 : 0
+        return (
+            <div className="max-w-3xl mx-auto px-6 py-20 text-center">
+                {status === 403 ? (
+                    <>
+                        <p className="font-serif text-xl text-brown mb-3">Access denied</p>
+                        <p className="text-brown-light text-sm">Check your confirmation email for the order tracking link, or <Link to="/login" className="text-gold underline">log in</Link> to view your orders.</p>
+                    </>
+                ) : status === 404 ? (
+                    <>
+                        <p className="font-serif text-xl text-brown mb-3">Order not found</p>
+                        <p className="text-brown-light text-sm">This order doesn't exist. Check the link in your confirmation email.</p>
+                    </>
+                ) : (
+                    <p className="text-red-600">Something went wrong. Please try again later.</p>
+                )}
+            </div>
+        )
+    }
 
     const config = statusConfig[order.status] ?? statusConfig.Pending
 
@@ -131,7 +151,7 @@ function OrderDetailPage() {
                 </div>
 
                 {/* Registration prompt for guests */}
-                {!isLoggedIn && (
+                {!order.userId && (
                     <div className="bg-cream-dark border border-gold/30 px-6 py-5 flex items-center justify-between gap-6">
                         <div>
                             <p className="font-serif text-brown text-lg">Track this order</p>
@@ -155,7 +175,7 @@ function OrderDetailPage() {
                             Total due: <span className="font-semibold text-brown text-base">${order.total.toFixed(2)}</span>
                         </p>
                         <StripePaymentForm
-                            orderId={orderId}
+                            orderId={order.id}
                             amount={order.total}
                             onSuccess={() => {/* polling will update the status automatically */}}
                         />

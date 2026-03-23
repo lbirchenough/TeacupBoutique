@@ -47,7 +47,7 @@ builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(context =>
     {
-        if (context.Route.RouteId is "route4-mine" or "route4-claim")
+        if (context.Route.RouteId is "route4-mine" or "route4-claim" or "route4")
         {
             context.AddRequestTransform(transformContext =>
             {

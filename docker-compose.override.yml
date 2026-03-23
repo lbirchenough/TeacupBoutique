@@ -123,9 +123,19 @@ services:
       - orders
       - payments
 
+  notifications:
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - RabbitMq__Host=rabbitmq
+      - FrontendUrl=http://localhost:5173
+    env_file:
+      - ./.secrets/notifications.env
+    depends_on:
+      - rabbitmq
 volumes:
   sql-auth-data:
   sql-inventory-data:
   sql-orders-data:
   sql-payments-data:
   rabbitmq-data:
+

@@ -17,11 +17,17 @@ export const ordersApi = {
         return response.json() as Promise<OrderDetail>
     },
 
-    getOrder: async (orderId: string): Promise<OrderDetail> => {
-        const response = await fetch(`${ORDERS_API_BASE_URL}/api/orders/${orderId}`)
+    getOrder: async (orderNumber: string, accessToken?: string): Promise<OrderDetail> => {
+        const jwt = authStore.getAccessToken()
+        const url = accessToken
+            ? `${ORDERS_API_BASE_URL}/api/orders/${orderNumber}?token=${accessToken}`
+            : `${ORDERS_API_BASE_URL}/api/orders/${orderNumber}`
+        const response = await fetch(url, {
+            headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        })
         if (!response.ok) {
             const message = await response.text()
-            throw new Error(message || `Request failed with status ${response.status}`)
+            throw new Error(`${response.status}: ${message || response.statusText}`)
         }
         return response.json()
     },

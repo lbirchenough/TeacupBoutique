@@ -21,7 +21,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as BookingsIndexRouteImport } from './routes/bookings.index'
 import { Route as ProductsProductIdRouteImport } from './routes/products.$productId'
-import { Route as OrdersOrderIdRouteImport } from './routes/orders.$orderId'
+import { Route as OrdersOrderNumberRouteImport } from './routes/orders.$orderNumber'
 import { Route as BookingsBookingIdRouteImport } from './routes/bookings.$bookingId'
 
 const RegisterRoute = RegisterRouteImport.update({
@@ -84,9 +84,9 @@ const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
   path: '/$productId',
   getParentRoute: () => ProductsRoute,
 } as any)
-const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
-  id: '/orders/$orderId',
-  path: '/orders/$orderId',
+const OrdersOrderNumberRoute = OrdersOrderNumberRouteImport.update({
+  id: '/orders/$orderNumber',
+  path: '/orders/$orderNumber',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookingsBookingIdRoute = BookingsBookingIdRouteImport.update({
@@ -106,7 +106,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/bookings/$bookingId': typeof BookingsBookingIdRoute
-  '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/orders/$orderNumber': typeof OrdersOrderNumberRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/bookings/': typeof BookingsIndexRoute
   '/products/': typeof ProductsIndexRoute
@@ -120,7 +120,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/bookings/$bookingId': typeof BookingsBookingIdRoute
-  '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/orders/$orderNumber': typeof OrdersOrderNumberRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/bookings': typeof BookingsIndexRoute
   '/products': typeof ProductsIndexRoute
@@ -137,7 +137,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/bookings/$bookingId': typeof BookingsBookingIdRoute
-  '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/orders/$orderNumber': typeof OrdersOrderNumberRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/bookings/': typeof BookingsIndexRoute
   '/products/': typeof ProductsIndexRoute
@@ -155,7 +155,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/bookings/$bookingId'
-    | '/orders/$orderId'
+    | '/orders/$orderNumber'
     | '/products/$productId'
     | '/bookings/'
     | '/products/'
@@ -169,7 +169,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/bookings/$bookingId'
-    | '/orders/$orderId'
+    | '/orders/$orderNumber'
     | '/products/$productId'
     | '/bookings'
     | '/products'
@@ -185,7 +185,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/bookings/$bookingId'
-    | '/orders/$orderId'
+    | '/orders/$orderNumber'
     | '/products/$productId'
     | '/bookings/'
     | '/products/'
@@ -201,7 +201,7 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
-  OrdersOrderIdRoute: typeof OrdersOrderIdRoute
+  OrdersOrderNumberRoute: typeof OrdersOrderNumberRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -290,11 +290,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsProductIdRouteImport
       parentRoute: typeof ProductsRoute
     }
-    '/orders/$orderId': {
-      id: '/orders/$orderId'
-      path: '/orders/$orderId'
-      fullPath: '/orders/$orderId'
-      preLoaderRoute: typeof OrdersOrderIdRouteImport
+    '/orders/$orderNumber': {
+      id: '/orders/$orderNumber'
+      path: '/orders/$orderNumber'
+      fullPath: '/orders/$orderNumber'
+      preLoaderRoute: typeof OrdersOrderNumberRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookings/$bookingId': {
@@ -345,7 +345,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRouteWithChildren,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
-  OrdersOrderIdRoute: OrdersOrderIdRoute,
+  OrdersOrderNumberRoute: OrdersOrderNumberRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
