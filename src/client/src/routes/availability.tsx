@@ -102,53 +102,51 @@ function AvailabilityPage() {
 
     return (
         <div className="pb-32">
-            {/* Step 1 — Date selection (full viewport when no date picked) */}
-            <div className={`flex flex-col items-center justify-center text-center px-6 transition-all ${!selectedDate ? 'min-h-[calc(100vh-80px)]' : 'py-16 border-b border-gold/20'}`}>
-                {/* Step badge */}
-                <div className="inline-block border border-gold px-5 py-1.5 mb-8">
-                    <span className="text-[10px] tracking-[0.3em] uppercase text-gold font-semibold">Step 1</span>
-                </div>
-
-                {!selectedDate ? (
-                    <>
-                        <h1 className="font-script text-6xl lg:text-7xl text-brown mb-4 leading-tight">
-                            When is your event?
-                        </h1>
-                        <p className="text-brown-mid mb-10 max-w-xs leading-relaxed">
-                            Select your special date to check availability
-                        </p>
-                        {/* Gold-bordered date input with calendar icon */}
-                        <div className="relative w-full max-w-sm">
-                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                                <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
-                            </div>
-                            <input
-                                type="date"
-                                min={today}
-                                value={selectedDate}
-                                onChange={e => setSelectedDate(e.target.value)}
-                                className="w-full border-2 border-gold bg-white pl-12 pr-4 py-4 text-brown focus:outline-none focus:border-gold/80 text-base"
-                            />
-                        </div>
-                    </>
-                ) : (
-                    <>
-                        <p className="font-script text-4xl text-brown mb-2">
-                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', {
-                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-                            })}
-                        </p>
-                        <button
-                            onClick={() => setSelectedDate('')}
-                            className="text-xs text-brown-light hover:text-brown underline underline-offset-2 transition-colors mt-1"
-                        >
-                            Change date
-                        </button>
-                    </>
+            {/* Step 1 — header (same height as other pages) */}
+            <div className="text-center px-6 pt-16 pb-10">
+                <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-3">Step 1</p>
+                <h1 className="font-script text-6xl text-brown">When is your event?</h1>
+                <p className="text-brown-mid mt-4 text-sm max-w-xs mx-auto leading-relaxed">
+                    {selectedDate
+                        ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', {
+                            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                          })
+                        : 'Select your special date to check availability'}
+                </p>
+                {selectedDate && (
+                    <button
+                        onClick={() => setSelectedDate('')}
+                        className="text-xs text-brown-light hover:text-brown underline underline-offset-2 transition-colors mt-3"
+                    >
+                        Change date
+                    </button>
                 )}
+                <div className="flex items-center justify-center gap-3 mt-5">
+                    <div className="h-px w-12 bg-gold/40" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
+                    <div className="h-px w-12 bg-gold/40" />
+                </div>
             </div>
+
+            {/* Date picker — below header, hidden once date chosen */}
+            {!selectedDate && (
+                <div className="flex justify-center px-6 pb-16">
+                    <div className="relative w-full max-w-sm">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                            <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                            </svg>
+                        </div>
+                        <input
+                            type="date"
+                            min={today}
+                            value={selectedDate}
+                            onChange={e => setSelectedDate(e.target.value)}
+                            className="w-full border-2 border-gold bg-white pl-12 pr-4 py-4 text-brown focus:outline-none focus:border-gold/80 text-base"
+                        />
+                    </div>
+                </div>
+            )}
 
             {selectedDate && isPending && (
                 <div className="text-center py-20">
@@ -163,13 +161,19 @@ function AvailabilityPage() {
             )}
 
             {data && (
-                <div className="max-w-4xl mx-auto px-6 py-10">
-                    <div className="flex items-center gap-4 mb-8">
-                        <div className="flex-1 h-px bg-gold/20" />
-                        <div className="inline-block border border-gold px-5 py-1.5">
-                            <span className="text-[10px] tracking-[0.3em] uppercase text-gold font-semibold">Step 2 — Select Items</span>
+                <div className="max-w-4xl mx-auto px-6 pt-6 pb-10">
+                    {/* Step 2 header */}
+                    <div className="text-center mb-10">
+                        <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-3">Step 2</p>
+                        <h2 className="font-script text-6xl text-brown">Select Your Items</h2>
+                        <p className="text-brown-mid mt-4 text-sm max-w-xs mx-auto leading-relaxed">
+                            Choose the sets you'd like to hire for your event
+                        </p>
+                        <div className="flex items-center justify-center gap-3 mt-5">
+                            <div className="h-px w-12 bg-gold/40" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
+                            <div className="h-px w-12 bg-gold/40" />
                         </div>
-                        <div className="flex-1 h-px bg-gold/20" />
                     </div>
 
                     <div className="flex flex-col gap-3">

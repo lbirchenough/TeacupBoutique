@@ -70,13 +70,19 @@ function CartPage() {
         return (
             <div>
                 {/* Header */}
-                <div className="bg-cream-dark border-b border-gold/20 py-16 text-center">
-                    <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-4">Your Cart</p>
-                    <h1 className="font-serif text-4xl text-brown">Nothing here yet</h1>
+                <div className="text-center pt-16 pb-10 px-6">
+                    <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-3">Your Cart</p>
+                    <h1 className="font-script text-6xl text-brown">Nothing here yet</h1>
+                    <p className="text-brown-mid mt-4 text-sm max-w-xs mx-auto leading-relaxed">
+                        Your cart is empty — browse the collection or pick a date to get started.
+                    </p>
+                    <div className="flex items-center justify-center gap-3 mt-5">
+                        <div className="h-px w-12 bg-gold/40" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
+                        <div className="h-px w-12 bg-gold/40" />
+                    </div>
                 </div>
-                <div className="max-w-md mx-auto px-6 py-20 text-center">
-                    <p className="text-brown-mid mb-2 font-serif text-lg">Your cart is empty.</p>
-                    <p className="text-sm text-brown-light mb-10">Browse our collection or check availability for your event date.</p>
+                <div className="max-w-md mx-auto px-6 pb-20 text-center">
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                         <Link
                             to="/availability"
@@ -99,12 +105,20 @@ function CartPage() {
     return (
         <div>
             {/* Header */}
-            <div className="bg-cream-dark border-b border-gold/20 py-16 text-center">
-                <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-4">Review</p>
-                <h1 className="font-serif text-4xl text-brown">Your Cart</h1>
+            <div className="text-center pt-16 pb-10 px-6">
+                <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-3">Review</p>
+                <h1 className="font-script text-6xl text-brown">Your Cart</h1>
+                <p className="text-brown-mid mt-4 text-sm max-w-xs mx-auto leading-relaxed">
+                    Review your selections and complete your booking below.
+                </p>
+                <div className="flex items-center justify-center gap-3 mt-5">
+                    <div className="h-px w-12 bg-gold/40" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
+                    <div className="h-px w-12 bg-gold/40" />
+                </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-6 py-12">
+            <div className="max-w-5xl mx-auto px-6 pt-6 pb-12">
                 <div className="grid grid-cols-1 gap-10 lg:grid-cols-5">
                     {/* Cart items — left col */}
                     <div className="lg:col-span-3 space-y-4">

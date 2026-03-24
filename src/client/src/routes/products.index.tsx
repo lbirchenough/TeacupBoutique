@@ -40,15 +40,20 @@ function ProductsPage() {
     return (
         <div>
             {/* Page header */}
-            <div className="bg-cream-dark border-b border-gold/20 py-16 text-center">
-                <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-4">Browse</p>
-                <h1 className="font-serif text-4xl text-brown">Our Collection</h1>
-                <p className="text-brown-mid mt-3 text-sm max-w-md mx-auto leading-relaxed">
+            <div className="text-center pt-16 pb-10 px-6">
+                <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-3">Browse</p>
+                <h1 className="font-script text-6xl text-brown">Our Collection</h1>
+                <p className="text-brown-mid mt-4 text-sm max-w-md mx-auto leading-relaxed">
                     Beautifully curated hire sets for every occasion
                 </p>
+                <div className="flex items-center justify-center gap-3 mt-5">
+                    <div className="h-px w-12 bg-gold/40" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-gold/60" />
+                    <div className="h-px w-12 bg-gold/40" />
+                </div>
             </div>
 
-            <div className="max-w-6xl mx-auto px-6 py-14">
+            <div className="max-w-6xl mx-auto px-6 pt-8 pb-14">
                 {/* Admin controls */}
                 {isAdmin && (
                     <div className="flex justify-end mb-10">
