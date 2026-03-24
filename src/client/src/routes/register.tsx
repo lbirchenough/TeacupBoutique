@@ -24,6 +24,7 @@ function RegisterPage() {
     password?: string
     confirmPassword?: string
   }>({})
+  const [serverError, setServerError] = useState<string | null>(null)
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
@@ -33,7 +34,7 @@ function RegisterPage() {
       navigate({ to: '/my-orders' })
     },
     onError: (error) => {
-      console.error('Register error:', error)
+      setServerError(error.message)
     },
   })
 
@@ -52,8 +53,8 @@ function RegisterPage() {
 
     if (!password) {
       newErrors.password = 'Password is required'
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters'
     }
 
     if (!confirmPassword) {
@@ -150,9 +151,9 @@ function RegisterPage() {
               )}
             </div>
 
-            {registerMutation.isError && (
+            {serverError && (
               <p className="text-sm text-center text-brown-mid bg-gold-pale border border-gold/30 px-4 py-2.5 mb-6">
-                {registerMutation.error?.message || 'Registration failed. Please try again.'}
+                {serverError}
               </p>
             )}
 

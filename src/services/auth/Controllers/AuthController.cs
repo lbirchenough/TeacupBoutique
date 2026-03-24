@@ -26,7 +26,7 @@ namespace auth.Controllers
             var result = await userManager.CreateAsync(user, req.Password);
 
             if (!result.Succeeded)
-                return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+                return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
 
             await userManager.AddToRoleAsync(user, "User");
             await SetRefreshTokenCookie(user);
