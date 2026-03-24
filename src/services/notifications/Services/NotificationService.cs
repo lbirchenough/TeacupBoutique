@@ -86,7 +86,8 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            To = evt.CustomerEmail,
+            //To = evt.CustomerEmail,
+            To = "luke.birchenough@outlook.com",
             ToName = evt.CustomerName,
             Subject = $"Booking Cancelled – {evt.OrderNumber}",
             HtmlBody = html

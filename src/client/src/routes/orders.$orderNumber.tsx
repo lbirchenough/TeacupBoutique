@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { ordersApi } from '../lib/ordersApi'
 import { StripePaymentForm } from '../components/StripePaymentForm'
 import type { OrderDetail, OrderStatus } from '../lib/types'
@@ -22,10 +23,13 @@ const statusConfig: Record<OrderStatus, { label: string; bg: string; text: strin
 
 const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 'OutOfStock']
 
+const cancellableStatuses: OrderStatus[] = ['Pending', 'AwaitingPayment', 'Confirmed']
+
 function OrderDetailPage() {
     const { orderNumber } = Route.useParams()
     const { token } = Route.useSearch()
-
+    const queryClient = useQueryClient()
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
     const { data: order, isPending, isError, error } = useQuery<OrderDetail>({
         queryKey: ['order', orderNumber, token],
@@ -37,6 +41,14 @@ function OrderDetailPage() {
             return false
         },
         retry: false,
+    })
+
+    const cancelMutation = useMutation({
+        mutationFn: () => ordersApi.cancelOrder(orderNumber, token),
+        onSuccess: () => {
+            setShowCancelConfirm(false)
+            queryClient.invalidateQueries({ queryKey: ['order', orderNumber, token] })
+        },
     })
 
     if (isPending) return (
@@ -179,6 +191,43 @@ function OrderDetailPage() {
                             amount={order.total}
                             onSuccess={() => {/* polling will update the status automatically */}}
                         />
+                    </div>
+                )}
+
+                {/* Cancel order */}
+                {cancellableStatuses.includes(order.status) && (
+                    <div className="border border-gold/20 p-5">
+                        {!showCancelConfirm ? (
+                            <button
+                                onClick={() => setShowCancelConfirm(true)}
+                                className="text-xs text-brown-light hover:text-red-600 transition-colors tracking-widest uppercase"
+                            >
+                                Cancel Order
+                            </button>
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-sm text-brown font-serif">Are you sure you want to cancel this order?</p>
+                                <p className="text-xs text-brown-light">This cannot be undone.</p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => cancelMutation.mutate()}
+                                        disabled={cancelMutation.isPending}
+                                        className="text-xs bg-red-600 hover:bg-red-700 text-white px-5 py-2 transition-colors disabled:opacity-50"
+                                    >
+                                        {cancelMutation.isPending ? 'Cancelling…' : 'Yes, Cancel Order'}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowCancelConfirm(false)}
+                                        className="text-xs text-brown-light hover:text-brown transition-colors px-3"
+                                    >
+                                        Keep Order
+                                    </button>
+                                </div>
+                                {cancelMutation.isError && (
+                                    <p className="text-xs text-red-600">{cancelMutation.error.message}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

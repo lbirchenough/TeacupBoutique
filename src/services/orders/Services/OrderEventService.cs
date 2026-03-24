@@ -116,21 +116,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
 
         if (order.PaymentAttempts >= 3)
         {
-            order.Status = OrderStatus.Cancelled;
-            order.CancelledAt = DateTime.UtcNow;
-            order.CancellationReason = "Payment failed after 3 attempts";
-            await _context.SaveChangesAsync();
-
-            var cancelledDto = new OrderCancelledDto
-            {
-                OrderId = order.Id,
-                OrderNumber = order.OrderNumber,
-                CustomerName = order.CustomerName,
-                CustomerEmail = order.CustomerEmail,
-                ReservationDate = order.PickupDate
-            };
-
-            await _publisher.PublishAsync("orders.OrderCancelled", JsonSerializer.Serialize(cancelledDto));
+            await CancelOrderAsync(order, "Payment failed after 3 attempts");
             Console.WriteLine($" [orders] Order {payload.OrderId} cancelled after 3 failed payment attempts");
         }
         else
@@ -138,5 +124,48 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
             await _context.SaveChangesAsync();
             Console.WriteLine($" [orders] Order {payload.OrderId} payment attempt {order.PaymentAttempts} of 3");
         }
+    }
+
+    public async Task CancelOrder(Order order, string reason)
+    {
+        await CancelOrderAsync(order, reason);
+        Console.WriteLine($" [orders] Order {order.Id} cancelled: {reason}");
+    }
+
+    public async Task HandleBookingCancelled(string message)
+    {
+        var payload = JsonSerializer.Deserialize<BookingCancelledEvent>(message);
+        if (payload is null) return;
+
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == payload.OrderId);
+        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found for booking cancellation"); return; }
+
+        if (order.Status is OrderStatus.Cancelled or OrderStatus.Completed)
+        {
+            Console.WriteLine($" [orders] Order {payload.OrderId} already in terminal state, skipping");
+            return;
+        }
+
+        await CancelOrderAsync(order, "Booking cancelled by administrator");
+        Console.WriteLine($" [orders] Order {payload.OrderId} cancelled via booking {payload.BookingId}");
+    }
+
+    private async Task CancelOrderAsync(Order order, string reason)
+    {
+        order.Status = OrderStatus.Cancelled;
+        order.CancelledAt = DateTime.UtcNow;
+        order.CancellationReason = reason;
+        await _context.SaveChangesAsync();
+
+        var cancelledDto = new OrderCancelledDto
+        {
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            CustomerName = order.CustomerName,
+            CustomerEmail = order.CustomerEmail,
+            ReservationDate = order.PickupDate
+        };
+
+        await _publisher.PublishAsync("orders.OrderCancelled", JsonSerializer.Serialize(cancelledDto));
     }
 }

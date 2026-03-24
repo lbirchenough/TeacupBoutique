@@ -100,6 +100,36 @@ namespace orders.Controllers
             return Ok(orders);
         }
 
+        [HttpGet("admin/{orderId:guid}")]
+        public async Task<IActionResult> GetOrderByIdForAdmin(Guid orderId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.OrderItems)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            if (order is null) return NotFound();
+            return Ok(order);
+        }
+
+        [HttpPost("{orderNumber}/cancel")]
+        public async Task<IActionResult> CancelOrder(string orderNumber, [FromQuery] Guid? token)
+        {
+            var order = await _context.Orders.FirstOrDefaultAsync(o => o.OrderNumber == orderNumber);
+            if (order is null) return NotFound();
+
+            var userIdStr = Request.Headers["X-User-Id"].FirstOrDefault();
+            var isOwner = Guid.TryParse(userIdStr, out var userId) && order.UserId == userId;
+            var hasValidToken = token.HasValue && order.AccessToken == token.Value;
+            if (!isOwner && !hasValidToken) return StatusCode(403);
+
+            if (order.Status is OrderStatus.Completed or OrderStatus.Cancelled or OrderStatus.OutOfStock)
+                return BadRequest($"Order cannot be cancelled in its current state ({order.Status}).");
+
+            await orderEventService.CancelOrder(order, "Cancelled by customer");
+            return NoContent();
+        }
+
         [HttpPatch("claim")]
         public async Task<IActionResult> ClaimOrders()
         {

@@ -55,4 +55,15 @@ export const bookingsApi = {
         })
         if (!response.ok) throw new Error(`Failed to complete booking (${response.status})`)
     },
+
+    cancelBooking: async (id: string): Promise<void> => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/cancel`, {
+            method: 'PUT',
+            headers: { ...authHeaders() },
+        })
+        if (!response.ok) {
+            const message = await response.text()
+            throw new Error(message || `Failed to cancel booking (${response.status})`)
+        }
+    },
 }

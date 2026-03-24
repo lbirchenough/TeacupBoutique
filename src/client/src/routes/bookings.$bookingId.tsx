@@ -31,6 +31,7 @@ function BookingDetailPage() {
 
     const [showReturnForm, setShowReturnForm] = useState(false)
     const [returnItems, setReturnItems] = useState<Record<string, { condition: ReturnCondition; notes: string }>>({})
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
     const { data: booking, isPending, isError } = useQuery<BookingDetail>({
         queryKey: ['booking', bookingId],
@@ -38,8 +39,8 @@ function BookingDetailPage() {
     })
 
     const { data: order } = useQuery<OrderDetail>({
-        queryKey: ['order', booking?.orderId],
-        queryFn: () => ordersApi.getOrder(booking!.orderId),
+        queryKey: ['order-admin', booking?.orderId],
+        queryFn: () => ordersApi.getOrderByIdAdmin(booking!.orderId),
         enabled: !!booking?.orderId,
     })
 
@@ -68,6 +69,14 @@ function BookingDetailPage() {
     const completeMutation = useMutation({
         mutationFn: () => bookingsApi.complete(bookingId),
         onSuccess: invalidate,
+    })
+
+    const cancelMutation = useMutation({
+        mutationFn: () => bookingsApi.cancelBooking(bookingId),
+        onSuccess: () => {
+            setShowCancelConfirm(false)
+            invalidate()
+        },
     })
 
     if (isPending) return (
@@ -111,31 +120,65 @@ function BookingDetailPage() {
                 </Link>
 
                 {/* Status banner + action buttons */}
-                <div className={`border border-gold/20 px-6 py-5 ${config.bg} flex items-center justify-between`}>
-                    <p className={`font-serif text-lg ${config.text}`}>{config.label}</p>
-                    <div className="flex gap-3">
-                        {booking.status === 'Confirmed' && (
-                            <ActionButton
-                                label="Mark as Checked Out"
-                                onClick={() => checkOutMutation.mutate()}
-                                isPending={checkOutMutation.isPending}
-                            />
-                        )}
-                        {booking.status === 'CheckedOut' && !showReturnForm && (
-                            <ActionButton
-                                label="Mark as Returned"
-                                onClick={initReturnForm}
-                                isPending={false}
-                            />
-                        )}
-                        {booking.status === 'Returned' && (
-                            <ActionButton
-                                label="Complete"
-                                onClick={() => completeMutation.mutate()}
-                                isPending={completeMutation.isPending}
-                            />
-                        )}
+                <div className={`border border-gold/20 px-6 py-5 ${config.bg}`}>
+                    <div className="flex items-center justify-between">
+                        <p className={`font-serif text-lg ${config.text}`}>{config.label}</p>
+                        <div className="flex gap-3">
+                            {booking.status === 'Confirmed' && (
+                                <ActionButton
+                                    label="Mark as Checked Out"
+                                    onClick={() => checkOutMutation.mutate()}
+                                    isPending={checkOutMutation.isPending}
+                                />
+                            )}
+                            {booking.status === 'CheckedOut' && !showReturnForm && (
+                                <ActionButton
+                                    label="Mark as Returned"
+                                    onClick={initReturnForm}
+                                    isPending={false}
+                                />
+                            )}
+                            {booking.status === 'Returned' && (
+                                <ActionButton
+                                    label="Complete"
+                                    onClick={() => completeMutation.mutate()}
+                                    isPending={completeMutation.isPending}
+                                />
+                            )}
+                            {(booking.status === 'Reserved' || booking.status === 'Confirmed') && !showCancelConfirm && (
+                                <button
+                                    onClick={() => setShowCancelConfirm(true)}
+                                    className="text-xs tracking-widest uppercase border border-red-300 text-red-600 px-4 py-2 hover:bg-red-50 transition-colors"
+                                >
+                                    Cancel Booking
+                                </button>
+                            )}
+                        </div>
                     </div>
+                    {showCancelConfirm && (
+                        <div className="mt-4 pt-4 border-t border-gold/20 space-y-3">
+                            <p className="text-sm text-brown font-serif">Cancel this booking and the associated order?</p>
+                            <p className="text-xs text-brown-light">The customer will receive a cancellation email.</p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => cancelMutation.mutate()}
+                                    disabled={cancelMutation.isPending}
+                                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-5 py-2 transition-colors disabled:opacity-50"
+                                >
+                                    {cancelMutation.isPending ? 'Cancelling…' : 'Yes, Cancel Booking'}
+                                </button>
+                                <button
+                                    onClick={() => setShowCancelConfirm(false)}
+                                    className="text-xs text-brown-light hover:text-brown transition-colors px-3"
+                                >
+                                    Keep Booking
+                                </button>
+                            </div>
+                            {cancelMutation.isError && (
+                                <p className="text-xs text-red-600">{cancelMutation.error.message}</p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Booking details */}
@@ -147,7 +190,7 @@ function BookingDetailPage() {
                                 day: 'numeric', month: 'long', year: 'numeric'
                             })
                         } />
-                        <Detail label="Order ID" value={booking.orderId} mono />
+                        <Detail label="Order Number" value={order?.orderNumber ?? '…'} />
                         {booking.confirmedAt && (
                             <Detail label="Confirmed" value={new Date(booking.confirmedAt).toLocaleString('en-AU')} />
                         )}

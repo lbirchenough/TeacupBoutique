@@ -1,5 +1,8 @@
+using System.Text.Json;
 using inventory.Data;
 using inventory.Entities;
+using inventory.Interfaces;
+using inventory.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,8 +10,27 @@ namespace inventory.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class BookingsController(InventoryDbContext _context) : ControllerBase
+    public class BookingsController(InventoryDbContext _context, IMessagePublisher _publisher) : ControllerBase
     {
+        [HttpPut("{id:guid}/cancel")]
+        public async Task<IActionResult> Cancel(Guid id)
+        {
+            var booking = await _context.Bookings.FindAsync(id);
+            if (booking is null) return NotFound();
+
+            if (booking.Status is BookingStatus.CheckedOut or BookingStatus.Returned or BookingStatus.Completed or BookingStatus.Cancelled)
+                return BadRequest($"Booking cannot be cancelled in its current state ({booking.Status}).");
+
+            booking.Status = BookingStatus.Cancelled;
+            booking.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var evt = new BookingCancelledEvent(booking.OrderId, booking.Id);
+            await _publisher.PublishAsync("inventory.BookingCancelled", JsonSerializer.Serialize(evt));
+
+            return NoContent();
+        }
+
         [HttpPut("{id:guid}/checkout")]
         public async Task<IActionResult> CheckOut(Guid id)
         {

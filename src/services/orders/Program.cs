@@ -13,6 +13,7 @@ builder.Services.AddHostedService<StockReservedConsumer>();
 builder.Services.AddHostedService<StockUnavailableConsumer>();
 builder.Services.AddHostedService<PaymentSucceededConsumer>();
 builder.Services.AddHostedService<PaymentFailedConsumer>();
+builder.Services.AddHostedService<BookingCancelledConsumer>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<IOrderEvent, OrderEventService>();
 

@@ -10,4 +10,6 @@ public interface IOrderEvent
     Task HandleStockUnavailable(string orderId);
     Task HandlePaymentSucceeded(string message);
     Task HandlePaymentFailed(string message);
+    Task CancelOrder(Order order, string reason);
+    Task HandleBookingCancelled(string message);
 }

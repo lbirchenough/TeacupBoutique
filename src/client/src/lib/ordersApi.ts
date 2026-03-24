@@ -51,4 +51,28 @@ export const ordersApi = {
             headers: { Authorization: `Bearer ${token}` },
         })
     },
+
+    getOrderByIdAdmin: async (orderId: string): Promise<OrderDetail> => {
+        const token = authStore.getAccessToken()
+        const response = await fetch(`${ORDERS_API_BASE_URL}/api/orders/admin/${orderId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!response.ok) throw new Error(`Failed to fetch order (${response.status})`)
+        return response.json()
+    },
+
+    cancelOrder: async (orderNumber: string, accessToken?: string): Promise<void> => {
+        const jwt = authStore.getAccessToken()
+        const url = accessToken
+            ? `${ORDERS_API_BASE_URL}/api/orders/${orderNumber}/cancel?token=${accessToken}`
+            : `${ORDERS_API_BASE_URL}/api/orders/${orderNumber}/cancel`
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        })
+        if (!response.ok) {
+            const message = await response.text()
+            throw new Error(message || `Request failed with status ${response.status}`)
+        }
+    },
 }
