@@ -22,6 +22,11 @@ export interface AuthResponse {
   accessToken: string
 }
 
+export interface RegisterResponse {
+  requiresVerification: boolean
+  accessToken?: string
+}
+
 export const authApi = {
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -41,7 +46,7 @@ export const authApi = {
     return await response.json()
   },
 
-  register: async (data: RegisterRequest): Promise<AuthResponse> => {
+  register: async (data: RegisterRequest): Promise<RegisterResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: {
@@ -101,6 +106,30 @@ export const authApi = {
       throw new Error(message || 'Failed to update profile')
     }
     if (response.status === 204) return {}
+    return response.json()
+  },
+
+  verifyEmail: async (params: { email: string; token: string }): Promise<AuthResponse> => {
+    const url = new URL(`${API_BASE_URL}/api/auth/verify-email`)
+    url.searchParams.set('email', params.email)
+    url.searchParams.set('token', params.token)
+    const response = await fetch(url.toString(), { credentials: 'include' })
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'Invalid or expired link')
+    }
+    return response.json()
+  },
+
+  verifyEmailChange: async (params: { newEmail: string; token: string }): Promise<AuthResponse> => {
+    const url = new URL(`${API_BASE_URL}/api/auth/verify-email-change`)
+    url.searchParams.set('newEmail', params.newEmail)
+    url.searchParams.set('token', params.token)
+    const response = await fetch(url.toString(), { credentials: 'include' })
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'Invalid or expired link')
+    }
     return response.json()
   },
 

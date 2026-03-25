@@ -25,13 +25,22 @@ function RegisterPage() {
     confirmPassword?: string
   }>({})
   const [serverError, setServerError] = useState<string | null>(null)
+  const [verificationSent, setVerificationSent] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
     onSuccess: async (data) => {
-      setToken(data.accessToken)
-      await ordersApi.claimOrders()
-      navigate({ to: '/my-orders' })
+      if (data.requiresVerification) {
+        setRegisteredEmail(email)
+        setVerificationSent(true)
+        return
+      }
+      if (data.accessToken) {
+        setToken(data.accessToken)
+        await ordersApi.claimOrders()
+        navigate({ to: '/my-orders' })
+      }
     },
     onError: (error) => {
       setServerError(error.message)
@@ -72,6 +81,26 @@ function RegisterPage() {
     if (validate()) {
       registerMutation.mutate({ email, password })
     }
+  }
+
+  if (verificationSent) {
+    return (
+      <div className="px-4 pt-16 pb-16">
+        <div className="w-full max-w-md mx-auto text-center">
+          <p className="text-xs tracking-[0.3em] uppercase text-gold font-semibold mb-3">Almost There</p>
+          <h1 className="font-script text-6xl text-brown mb-6">Check Your Inbox</h1>
+          <div className="bg-cream border border-gold/20 shadow-lg px-8 py-10">
+            <p className="text-brown-mid text-sm leading-relaxed mb-4">
+              We've sent a verification link to <strong className="text-brown">{registeredEmail}</strong>.
+            </p>
+            <p className="text-brown-mid text-sm leading-relaxed">
+              Click the link in that email to activate your account and log in.
+            </p>
+            <p className="text-xs text-brown-light mt-6">Didn't receive it? Check your spam folder or try registering again.</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

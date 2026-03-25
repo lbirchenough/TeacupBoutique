@@ -174,4 +174,56 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
             HtmlBody = MakeHtml("Email Address Updated", "Your Teacup Boutique account is now linked to this email address.")
         });
     }
+
+    public async Task SendEmailVerificationAsync(EmailVerificationRequestedEvent evt)
+    {
+        var html = $"""
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #3d1f0d;">
+              <h1 style="color:#c4953a;">Verify Your Email Address</h1>
+              <p>Welcome to Teacup Boutique!</p>
+              <p>Please click the button below to verify your email address and activate your account.</p>
+              <p style="margin-top:24px;">
+                <a href="{evt.VerificationLink}" style="display:inline-block; background:#c4953a; color:#fff; padding:12px 24px; text-decoration:none; border-radius:4px; font-size:16px;">Verify My Email</a>
+              </p>
+              <p style="margin-top:16px; font-size:13px; color:#888;">This link expires in 1 day. If you did not create an account, you can safely ignore this email.</p>
+              <p style="margin-top:24px; color:#c4953a;">Teacup Boutique</p>
+            </div>
+            """;
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.Email,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.Email,
+            Subject = "Verify your Teacup Boutique account",
+            HtmlBody = html
+        });
+    }
+
+    public async Task SendEmailChangeVerificationAsync(EmailChangeVerificationRequestedEvent evt)
+    {
+        var html = $"""
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #3d1f0d;">
+              <h1 style="color:#c4953a;">Confirm Your New Email Address</h1>
+              <p>A request was made to change your Teacup Boutique account email to this address.</p>
+              <p>Click the button below to confirm and complete the change.</p>
+              <p style="margin-top:24px;">
+                <a href="{evt.VerificationLink}" style="display:inline-block; background:#c4953a; color:#fff; padding:12px 24px; text-decoration:none; border-radius:4px; font-size:16px;">Confirm New Email</a>
+              </p>
+              <p style="margin-top:16px; padding:16px; background:#fff3cd; border-radius:4px; font-size:14px; color:#856404;">
+                If you did not request this change, you can safely ignore this email. Your current email address will remain unchanged.
+              </p>
+              <p style="margin-top:24px; color:#c4953a;">Teacup Boutique</p>
+            </div>
+            """;
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.NewEmail,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.NewEmail,
+            Subject = "Confirm your new email address — Teacup Boutique",
+            HtmlBody = html
+        });
+    }
 }
