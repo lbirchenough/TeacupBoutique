@@ -1,4 +1,6 @@
+using System.Text.Json;
 using auth.DTO;
+using auth.Interfaces;
 using auth.Models;
 using auth.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -11,7 +13,7 @@ namespace auth.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager) : ControllerBase
+    public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager, IMessagePublisher publisher) : ControllerBase
     {
         
         [HttpPost("register")]
@@ -109,6 +111,63 @@ namespace auth.Controllers
             //Append cookie RefreshToken to the response 
             Response.Cookies.Append("RefreshToken", refreshToken, cookieOptions);
 
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<ActionResult<ProfileResponse>> GetProfile()
+        {
+            var userId = User.GetMemberId();
+            var user = await userManager.FindByIdAsync(userId!);
+            if (user is null) return NotFound();
+
+            return Ok(new ProfileResponse(
+                user.FullName ?? "",
+                user.Email ?? "",
+                user.PhoneNumber ?? ""));
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        {
+            var userId = User.GetMemberId();
+            var user = await userManager.FindByIdAsync(userId!);
+            if (user is null) return NotFound();
+
+            var emailChanged = !string.Equals(request.Email, user.Email, StringComparison.OrdinalIgnoreCase);
+
+            if (emailChanged)
+            {
+                var existing = await userManager.FindByEmailAsync(request.Email);
+                if (existing is not null && existing.Id != user.Id)
+                    return BadRequest("That email address is already in use.");
+
+                var oldEmail = user.Email!;
+                await userManager.SetEmailAsync(user, request.Email);
+                await userManager.SetUserNameAsync(user, request.Email);
+                await userManager.UpdateSecurityStampAsync(user);
+
+                user.FullName = request.FullName;
+                user.PhoneNumber = request.PhoneNumber;
+                await userManager.UpdateAsync(user);
+
+                var evt = new EmailChangedEvent(user.Id, user.FullName ?? "", oldEmail, request.Email);
+                await publisher.PublishAsync("auth.EmailChanged", JsonSerializer.Serialize(evt));
+
+                await SetRefreshTokenCookie(user);
+                var newToken = await tokenService.CreateAccessToken(user);
+                return Ok(new AuthResponse(newToken));
+            }
+
+            user.FullName = request.FullName;
+            user.PhoneNumber = request.PhoneNumber;
+            var result = await userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
+
+            return NoContent();
         }
 
         [Authorize]

@@ -137,4 +137,41 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
             HtmlBody = html
         });
     }
+
+    public async Task SendEmailChangedAsync(EmailChangedEvent evt)
+    {
+        string MakeHtml(string heading, string body) => $"""
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #3d1f0d;">
+              <h1 style="color:#c4953a;">{heading}</h1>
+              <p>Hi {evt.FullName},</p>
+              <p>{body}</p>
+              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                <tr><td><strong>Previous email</strong></td><td>{evt.OldEmail}</td></tr>
+                <tr><td><strong>New email</strong></td><td>{evt.NewEmail}</td></tr>
+              </table>
+              <p style="margin-top:16px; padding:16px; background:#fff3cd; border-radius:4px; font-size:14px; color:#856404;">
+                If you did not make this change, please contact us immediately.
+              </p>
+              <p style="margin-top:24px; color:#c4953a;">Teacup Boutique</p>
+            </div>
+            """;
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.OldEmail,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.FullName,
+            Subject = "Your email address has been changed",
+            HtmlBody = MakeHtml("Email Address Changed", "Your Teacup Boutique account email address has been changed.")
+        });
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.NewEmail,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.FullName,
+            Subject = "Welcome to your new email address",
+            HtmlBody = MakeHtml("Email Address Updated", "Your Teacup Boutique account is now linked to this email address.")
+        });
+    }
 }

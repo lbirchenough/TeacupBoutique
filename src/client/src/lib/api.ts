@@ -1,6 +1,12 @@
 import { authStore } from './authStore'
+import type { ProfileResponse, UpdateProfileRequest } from './authTypes'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5054'
+
+function authHeaders(): HeadersInit {
+  const token = authStore.getAccessToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 export interface LoginRequest {
   email: string
@@ -72,6 +78,30 @@ export const authApi = {
     }
 
     authStore.clearAccessToken()
+  },
+
+  getProfile: async (): Promise<ProfileResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+      credentials: 'include',
+      headers: { ...authHeaders() },
+    })
+    if (!response.ok) throw new Error('Failed to load profile')
+    return response.json()
+  },
+
+  updateProfile: async (data: UpdateProfileRequest): Promise<{ accessToken?: string }> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'Failed to update profile')
+    }
+    if (response.status === 204) return {}
+    return response.json()
   },
 
   refresh: async (): Promise<AuthResponse> => {

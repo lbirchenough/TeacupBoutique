@@ -59,12 +59,14 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
     env_file:
       - ./.secrets/auth.env
     ports:
       - "5194:8080"
     depends_on:
       - sql-auth
+      - rabbitmq
 
   inventory:
     environment:
