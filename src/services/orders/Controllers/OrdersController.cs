@@ -38,6 +38,7 @@ namespace orders.Controllers
                 Subtotal = dto.Subtotal,
                 Tax = dto.Tax,
                 Total = dto.Total,
+                DepositTotal = dto.DepositTotal,
                 PickupDate = dto.PickupDate,
                 ReturnDate = dto.ReturnDate,
                 ReservationDate = dto.ReservationDate,
@@ -53,7 +54,8 @@ namespace orders.Controllers
                     Colour = i.ProductThemeColor,
                     ImageUrl = i.ProductImageUrl,
                     UnitPrice = i.PricePerDay,
-                    Total = i.Subtotal
+                    Total = i.Subtotal,
+                    DepositAmount = i.DepositAmount
                 }).ToList()
             };
 

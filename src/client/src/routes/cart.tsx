@@ -50,7 +50,8 @@ function CartPage() {
             returnDate: form.reservationDate,
             subtotal: exGst,
             tax: gst,
-            total: grandTotal,
+            total: grandTotal + totalDeposit,
+            depositTotal: totalDeposit,
             items: items.map(i => ({
                 productId: i.productId,
                 quantity: i.quantity,
@@ -59,6 +60,7 @@ function CartPage() {
                 productImageUrl: i.imageUrl ?? undefined,
                 pricePerDay: i.pricePerDay,
                 subtotal: i.pricePerDay * i.quantity,
+                depositAmount: (i.depositAmount ?? 0) * i.quantity,
                 rentalDate: form.reservationDate,
             })),
         }
@@ -134,7 +136,10 @@ function CartPage() {
                                 <div className="flex-1 min-w-0">
                                     <p className="font-serif text-brown truncate">{item.name}</p>
                                     {item.colour && <p className="text-xs text-brown-light mt-0.5 tracking-wide">{item.colour}</p>}
-                                    <p className="text-sm text-brown-mid mt-1">${item.pricePerDay.toFixed(2)}</p>
+                                    <p className="text-sm text-brown-mid mt-1">${item.pricePerDay.toFixed(2)}/day</p>
+                                    {(item.depositAmount ?? 0) > 0 && (
+                                        <p className="text-xs text-brown-light mt-0.5">+${((item.depositAmount ?? 0) * item.quantity).toFixed(2)} deposit</p>
+                                    )}
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
                                     <p className="font-semibold text-brown">
@@ -193,7 +198,10 @@ function CartPage() {
                             </div>
                             {totalDeposit > 0 && (
                                 <div className="flex justify-between text-brown-mid pt-3 border-t border-gold/20">
-                                    <span>Security deposit</span>
+                                    <div>
+                                        <span>Security deposit</span>
+                                        <p className="text-xs text-brown-light mt-0.5">Refundable subject to item condition</p>
+                                    </div>
                                     <span className="font-medium">${totalDeposit.toFixed(2)}</span>
                                 </div>
                             )}

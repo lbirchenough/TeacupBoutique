@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace orders.Entities;
 
@@ -49,6 +51,9 @@ public class Order
     [Column(TypeName = "decimal(10,2)")]
     public decimal Total { get; set; }
 
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal DepositTotal { get; set; }
+
     // Dates related to order fulfillment
     public DateOnly PickupDate { get; set; }
     public DateOnly ReturnDate { get; set; }
@@ -67,6 +72,18 @@ public class Order
 
     public DateTime? CancelledAt { get; set; }
     public string? CancellationReason { get; set; }
+
+    [Column(TypeName = "decimal(10,2)")] public decimal? DepositAmountKept { get; set; }
+    public string? CompletionNotes { get; set; }
+
+    [JsonIgnore]
+    public string? ReturnPhotoUrls { get; set; }
+
+    [NotMapped]
+    [JsonPropertyName("returnPhotoUrls")]
+    public List<string> ReturnPhotoUrlsList =>
+        string.IsNullOrEmpty(ReturnPhotoUrls) ? [] :
+        JsonSerializer.Deserialize<List<string>>(ReturnPhotoUrls) ?? [];
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

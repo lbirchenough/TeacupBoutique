@@ -150,6 +150,46 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         Console.WriteLine($" [orders] Order {payload.OrderId} cancelled via booking {payload.BookingId}");
     }
 
+    public async Task HandleBookingCompleted(string message)
+    {
+        var payload = JsonSerializer.Deserialize<BookingCompletedEvent>(message,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (payload is null) return;
+
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == payload.OrderId);
+        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found for booking completion"); return; }
+
+        if (order.Status is OrderStatus.Completed or OrderStatus.Cancelled)
+        {
+            Console.WriteLine($" [orders] Order {payload.OrderId} already in terminal state, skipping completion");
+            return;
+        }
+
+        order.Status = OrderStatus.Completed;
+        order.CompletedAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.DepositAmountKept = payload.DepositAmountKept;
+        order.CompletionNotes = payload.CompletionNotes;
+        order.ReturnPhotoUrls = payload.ReturnPhotoUrls.Count > 0
+            ? JsonSerializer.Serialize(payload.ReturnPhotoUrls)
+            : null;
+        await _context.SaveChangesAsync();
+
+        var completedDto = new OrderCompletedDto
+        {
+            OrderId = order.Id,
+            OrderNumber = order.OrderNumber,
+            AccessToken = order.AccessToken,
+            CustomerName = order.CustomerName,
+            CustomerEmail = order.CustomerEmail,
+            ReservationDate = order.ReservationDate,
+            DepositAmountKept = payload.DepositAmountKept,
+            CompletionNotes = payload.CompletionNotes
+        };
+        await _publisher.PublishAsync("orders.OrderCompleted", JsonSerializer.Serialize(completedDto));
+        Console.WriteLine($" [orders] Order {payload.OrderId} completed via booking {payload.BookingId}");
+    }
+
     private async Task CancelOrderAsync(Order order, string reason)
     {
         order.Status = OrderStatus.Cancelled;

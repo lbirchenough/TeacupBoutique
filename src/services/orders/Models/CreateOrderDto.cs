@@ -18,6 +18,7 @@ public class CreateOrderDto
     public decimal Subtotal { get; set; }
     public decimal Tax { get; set; }
     public decimal Total { get; set; }
+    public decimal DepositTotal { get; set; }
 
     public DateOnly PickupDate { get; set; }
     public DateOnly ReturnDate { get; set; }
