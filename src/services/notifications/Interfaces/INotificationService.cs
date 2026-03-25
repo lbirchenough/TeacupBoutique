@@ -8,4 +8,5 @@ public interface INotificationService
     Task SendPaymentFailedAsync(PaymentFailedEvent evt);
     Task SendOrderCancelledAsync(OrderCancelledEvent evt);
     Task SendOrderCompletedAsync(OrderCompletedEvent evt);
+    Task SendEmailChangedAsync(EmailChangedEvent evt);
 }

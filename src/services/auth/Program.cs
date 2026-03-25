@@ -1,5 +1,6 @@
 using System.Text;
 using auth.Data;
+using auth.Interfaces;
 using auth.Models;
 using auth.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 
 
 

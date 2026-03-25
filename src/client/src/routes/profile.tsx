@@ -1,24 +1,47 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../lib/useAuth'
+import { authApi } from '../lib/api'
 
 export const Route = createFileRoute('/profile')({
   component: ProfilePage,
 })
 
 function ProfilePage() {
-  const { email } = useAuth()
+  const { updateToken } = useAuth()
+  const queryClient = useQueryClient()
 
   const [fullName, setFullName] = useState('')
-  const [profileEmail, setProfileEmail] = useState(email ?? '')
+  const [profileEmail, setProfileEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [saved, setSaved] = useState(false)
+
+  const { data: profile, isPending } = useQuery({
+    queryKey: ['profile'],
+    queryFn: () => authApi.getProfile(),
+  })
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.fullName)
+      setProfileEmail(profile.email)
+      setPhone(profile.phoneNumber)
+    }
+  }, [profile])
+
+  const updateMutation = useMutation({
+    mutationFn: () => authApi.updateProfile({ fullName, email: profileEmail, phoneNumber: phone }),
+    onSuccess: (data) => {
+      if (data.accessToken) {
+        updateToken(data.accessToken)
+      }
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
+    },
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: wire up to backend
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    updateMutation.mutate()
   }
 
   return (
@@ -31,58 +54,68 @@ function ProfilePage() {
           <div className="mt-3 h-px bg-gold/30" />
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
-              Full Name
-            </label>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Your full name"
-              className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown placeholder:text-brown-light/50 focus:outline-none focus:border-gold transition-colors"
-            />
-          </div>
+        {isPending ? (
+          <p className="font-serif text-brown-light">Loading…</p>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown placeholder:text-brown-light/50 focus:outline-none focus:border-gold transition-colors"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={profileEmail}
-              onChange={(e) => setProfileEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown placeholder:text-brown-light/50 focus:outline-none focus:border-gold transition-colors"
-            />
-          </div>
+            <div>
+              <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={profileEmail}
+                onChange={(e) => setProfileEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown placeholder:text-brown-light/50 focus:outline-none focus:border-gold transition-colors"
+              />
+              <p className="text-xs text-brown-light mt-1">Changing your email will require re-authentication and send a security notice to both addresses.</p>
+            </div>
 
-          <div>
-            <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+61 400 000 000"
-              className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown placeholder:text-brown-light/50 focus:outline-none focus:border-gold transition-colors"
-            />
-          </div>
+            <div>
+              <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+61 400 000 000"
+                className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown placeholder:text-brown-light/50 focus:outline-none focus:border-gold transition-colors"
+              />
+            </div>
 
-          <div className="flex items-center gap-4 pt-2">
-            <button
-              type="submit"
-              className="text-xs tracking-widest uppercase bg-brown text-cream px-8 py-3 hover:bg-brown-mid transition-colors"
-            >
-              Save Changes
-            </button>
-            {saved && (
-              <span className="text-xs text-gold tracking-wide">Changes saved</span>
+            {updateMutation.isError && (
+              <p className="text-sm text-red-600">{updateMutation.error.message}</p>
             )}
-          </div>
-        </form>
+
+            <div className="flex items-center gap-4 pt-2">
+              <button
+                type="submit"
+                disabled={updateMutation.isPending}
+                className="text-xs tracking-widest uppercase bg-brown text-cream px-8 py-3 hover:bg-brown-mid transition-colors disabled:opacity-50"
+              >
+                {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+              {updateMutation.isSuccess && (
+                <span className="text-xs text-gold tracking-wide">Changes saved</span>
+              )}
+            </div>
+          </form>
+        )}
 
         <div className="mt-12 pt-8 border-t border-gold/20">
           <Link

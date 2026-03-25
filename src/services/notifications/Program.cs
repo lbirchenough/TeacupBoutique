@@ -22,6 +22,7 @@ builder.Services.AddHostedService<OrderConfirmedConsumer>();
 builder.Services.AddHostedService<PaymentFailedConsumer>();
 builder.Services.AddHostedService<OrderCancelledConsumer>();
 builder.Services.AddHostedService<OrderCompletedConsumer>();
+builder.Services.AddHostedService<EmailChangedConsumer>();
 
 var host = builder.Build();
 host.Run();

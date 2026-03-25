@@ -41,6 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const updateToken = (token: string) => {
+    authStore.setAccessToken(token)
+    setAccessToken(token)
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -74,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: accessToken ? parseEmail(accessToken) : null,
     accessToken,
     setToken,
+    updateToken,
   }
 
   if (!initialised) {

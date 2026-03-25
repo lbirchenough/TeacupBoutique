@@ -27,6 +27,8 @@ public record OrderCancelledEvent(
     string CustomerEmail,
     DateOnly ReservationDate);
 
+public record EmailChangedEvent(string UserId, string FullName, string OldEmail, string NewEmail);
+
 public record OrderCompletedEvent(
     Guid OrderId,
     string OrderNumber,
