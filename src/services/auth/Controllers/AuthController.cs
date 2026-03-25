@@ -8,16 +8,18 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace auth.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager, IMessagePublisher publisher) : ControllerBase
+    public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager, IMessagePublisher publisher, IConfiguration configuration) : ControllerBase
     {
-        
+        private readonly string clientUrl = configuration["ClientUrl"] ?? "https://localhost:5173";
+
         [HttpPost("register")]
-        public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
+        public async Task<ActionResult<RegisterResponse>> Register(RegisterRequest req)
         {
             var user = new ApplicationUser
             {
@@ -30,11 +32,12 @@ namespace auth.Controllers
             if (!result.Succeeded)
                 return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
 
-            await userManager.AddToRoleAsync(user, "User");
-            await SetRefreshTokenCookie(user);
+            var confirmToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
+            var link = $"{clientUrl}/verify-email?token={Uri.EscapeDataString(confirmToken)}&email={Uri.EscapeDataString(user.Email!)}";
+            await publisher.PublishAsync("auth.EmailVerificationRequested",
+                JsonSerializer.Serialize(new EmailVerificationRequestedEvent(user.Id, user.Email!, link)));
 
-            var token = await tokenService.CreateAccessToken(user);
-            return Ok(new AuthResponse(token));
+            return Ok(new RegisterResponse(RequiresVerification: true));
         }
 
         [HttpPost("login")]
@@ -44,12 +47,12 @@ namespace auth.Controllers
             if (user is null)
                 return Unauthorized("Invalid credentials");
 
-            
             var ok = await userManager.CheckPasswordAsync(user, req.Password);
-            //look into signup manager more after
-            //var ok = await signInManager.CheckPasswordSignInAsync(user, req.Password, lockoutOnFailure: false); 
             if (!ok)
                 return Unauthorized("Invalid credentials");
+
+            if (!user.EmailConfirmed)
+                return Unauthorized("Please verify your email before logging in.");
 
             await SetRefreshTokenCookie(user);
 
@@ -63,7 +66,7 @@ namespace auth.Controllers
             //Basically have a timer in SPA that hits this end point every 5 minutes
             //If user is authenticated with valid refresh token, itll continually make a new refresh token with fresh 7 day expiry every 5 minutes
             //If user then doesn't use app for 7 days it will be invalidated and user would need to login again to reauthenticate
-            
+
             var refreshToken = Request.Cookies["RefreshToken"];
             if (refreshToken == null) return NoContent();
 
@@ -77,11 +80,41 @@ namespace auth.Controllers
             return Ok(new AuthResponse(token));
         }
 
-        // private async Task<bool> EmailExists(string email)
-        // {
-        //     //Adding ! to x.Email to assert with the null suppression operator that this value won't be null at runtime
-        //     return await context.Users.AnyAsync(x => x.Email!.ToLower() == email.ToLower());
-        // }
+        [HttpGet("verify-email")]
+        public async Task<ActionResult<AuthResponse>> VerifyEmail([FromQuery] VerifyEmailRequest req)
+        {
+            var user = await userManager.FindByEmailAsync(req.Email);
+            if (user is null) return BadRequest("Invalid link.");
+
+            var result = await userManager.ConfirmEmailAsync(user, req.Token);
+            if (!result.Succeeded) return BadRequest("Invalid or expired link.");
+
+            await userManager.AddToRoleAsync(user, "User");
+            await SetRefreshTokenCookie(user);
+            return Ok(new AuthResponse(await tokenService.CreateAccessToken(user)));
+        }
+
+        [HttpGet("verify-email-change")]
+        public async Task<ActionResult<AuthResponse>> VerifyEmailChange([FromQuery] VerifyEmailChangeRequest req)
+        {
+            var user = await userManager.Users.FirstOrDefaultAsync(u => u.PendingEmail == req.NewEmail);
+            if (user is null) return BadRequest("Invalid link.");
+
+            var oldEmail = user.Email!;
+            var result = await userManager.ChangeEmailAsync(user, req.NewEmail, req.Token);
+            if (!result.Succeeded) return BadRequest("Invalid or expired link.");
+
+            await userManager.SetUserNameAsync(user, req.NewEmail);
+            await userManager.UpdateSecurityStampAsync(user);
+            user.PendingEmail = null;
+            await userManager.UpdateAsync(user);
+
+            var evt = new EmailChangedEvent(user.Id, user.FullName ?? "", oldEmail, req.NewEmail);
+            await publisher.PublishAsync("auth.EmailChanged", JsonSerializer.Serialize(evt));
+
+            await SetRefreshTokenCookie(user);
+            return Ok(new AuthResponse(await tokenService.CreateAccessToken(user)));
+        }
 
         private async Task SetRefreshTokenCookie(ApplicationUser user)
         {
@@ -89,7 +122,6 @@ namespace auth.Controllers
             //We would then get this cookie with token back on every client request and we can verify on login against refresh token stored in db and then issue a short lived token
             //Short lived token is then only stored in angular memory not in local storage
             //This is more secure than just storing token in local storage on client browser.
-
 
             //Generate a token and update user in db with RefreshToken and RefreshTokenExpiry
             var refreshToken = tokenService.GeneratateRefreshToken();
@@ -104,13 +136,11 @@ namespace auth.Controllers
                 HttpOnly = true, //HttpOnly cookies are not accessible from client side javascript / apps, not accessible clientside
                 Secure = true, //only sent over https so ensure using https in dev
                 SameSite = SameSiteMode.Strict, // samesite is for controlling if a cookie gets sent, same site considers scheme + hostname NOT PORT, so I just needed to make sure angular was running on https and the cookies started being sent
-                // SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(7) //will get removed from browser after 7 days
             };
 
-            //Append cookie RefreshToken to the response 
+            //Append cookie RefreshToken to the response
             Response.Cookies.Append("RefreshToken", refreshToken, cookieOptions);
-
         }
 
         [Authorize]
@@ -143,21 +173,17 @@ namespace auth.Controllers
                 if (existing is not null && existing.Id != user.Id)
                     return BadRequest("That email address is already in use.");
 
-                var oldEmail = user.Email!;
-                await userManager.SetEmailAsync(user, request.Email);
-                await userManager.SetUserNameAsync(user, request.Email);
-                await userManager.UpdateSecurityStampAsync(user);
-
+                var changeToken = await userManager.GenerateChangeEmailTokenAsync(user, request.Email);
+                user.PendingEmail = request.Email;
                 user.FullName = request.FullName;
                 user.PhoneNumber = request.PhoneNumber;
                 await userManager.UpdateAsync(user);
 
-                var evt = new EmailChangedEvent(user.Id, user.FullName ?? "", oldEmail, request.Email);
-                await publisher.PublishAsync("auth.EmailChanged", JsonSerializer.Serialize(evt));
+                var link = $"{clientUrl}/verify-email-change?token={Uri.EscapeDataString(changeToken)}&newEmail={Uri.EscapeDataString(request.Email)}";
+                await publisher.PublishAsync("auth.EmailChangeVerificationRequested",
+                    JsonSerializer.Serialize(new EmailChangeVerificationRequestedEvent(user.Id, request.Email, link)));
 
-                await SetRefreshTokenCookie(user);
-                var newToken = await tokenService.CreateAccessToken(user);
-                return Ok(new AuthResponse(newToken));
+                return Ok(new { requiresEmailVerification = true });
             }
 
             user.FullName = request.FullName;
@@ -185,9 +211,5 @@ namespace auth.Controllers
 
             return Ok();
         }
-
-
-
-
     }
 }

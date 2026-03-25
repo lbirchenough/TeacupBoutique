@@ -29,6 +29,9 @@ public record OrderCancelledEvent(
 
 public record EmailChangedEvent(string UserId, string FullName, string OldEmail, string NewEmail);
 
+public record EmailVerificationRequestedEvent(string UserId, string Email, string VerificationLink);
+public record EmailChangeVerificationRequestedEvent(string UserId, string NewEmail, string VerificationLink);
+
 public record OrderCompletedEvent(
     Guid OrderId,
     string OrderNumber,

@@ -9,4 +9,6 @@ public interface INotificationService
     Task SendOrderCancelledAsync(OrderCancelledEvent evt);
     Task SendOrderCompletedAsync(OrderCompletedEvent evt);
     Task SendEmailChangedAsync(EmailChangedEvent evt);
+    Task SendEmailVerificationAsync(EmailVerificationRequestedEvent evt);
+    Task SendEmailChangeVerificationAsync(EmailChangeVerificationRequestedEvent evt);
 }

@@ -15,6 +15,8 @@ function ProfilePage() {
   const [fullName, setFullName] = useState('')
   const [profileEmail, setProfileEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [emailVerificationPending, setEmailVerificationPending] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState('')
 
   const { data: profile, isPending } = useQuery({
     queryKey: ['profile'],
@@ -31,7 +33,12 @@ function ProfilePage() {
 
   const updateMutation = useMutation({
     mutationFn: () => authApi.updateProfile({ fullName, email: profileEmail, phoneNumber: phone }),
-    onSuccess: (data) => {
+    onSuccess: (data: { accessToken?: string; requiresEmailVerification?: boolean }) => {
+      if (data.requiresEmailVerification) {
+        setPendingEmail(profileEmail)
+        setEmailVerificationPending(true)
+        return
+      }
       if (data.accessToken) {
         updateToken(data.accessToken)
       }
@@ -100,6 +107,12 @@ function ProfilePage() {
 
             {updateMutation.isError && (
               <p className="text-sm text-red-600">{updateMutation.error.message}</p>
+            )}
+
+            {emailVerificationPending && (
+              <div className="bg-gold-pale border border-gold/30 px-4 py-3 text-sm text-brown-mid">
+                A verification link has been sent to <strong className="text-brown">{pendingEmail}</strong>. Click the link in that email to confirm your new address.
+              </div>
             )}
 
             <div className="flex items-center gap-4 pt-2">
