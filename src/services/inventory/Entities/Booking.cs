@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 
 namespace inventory.Entities;
@@ -24,6 +25,8 @@ public class Booking
     public DateTime? ReturnedAt { get; set; }
 
     public string? Notes { get; set; }
+    public string? CompletionNotes { get; set; }
+    [Column(TypeName = "decimal(10,2)")] public decimal? DepositAmountKept { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

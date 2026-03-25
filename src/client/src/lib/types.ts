@@ -89,8 +89,12 @@ export interface OrderDetail {
     reservationDate: string;
     paymentStatus?: PaymentStatus | null;
     paymentId?: string | null;
+    depositTotal: number;
     cancelledAt?: string | null;
     cancellationReason?: string | null;
+    depositAmountKept?: number | null;
+    completionNotes?: string | null;
+    returnPhotoUrls?: string[];
     createdAt: string;
     updatedAt: string;
     confirmedAt?: string | null;
@@ -108,6 +112,7 @@ export interface OrderItemDetail {
     imageUrl?: string | null;
     unitPrice: number;
     total: number;
+    depositAmount: number;
 }
 
 // Bookings
@@ -153,6 +158,8 @@ export interface BookingDetail {
     returnedAt?: string | null
     completedAt?: string | null
     notes?: string | null
+    completionNotes?: string | null
+    depositAmountKept?: number | null
     createdAt: string
     bookingItems: BookingItemDetail[]
 }
@@ -192,6 +199,7 @@ export interface CreateOrderRequest {
     subtotal: number;
     tax: number;
     total: number;
+    depositTotal: number;
     items: CreateOrderItemRequest[];
 }
 
@@ -203,5 +211,6 @@ export interface CreateOrderItemRequest {
     productImageUrl?: string;
     pricePerDay: number;
     subtotal: number;
+    depositAmount: number;
     rentalDate: string;
 }

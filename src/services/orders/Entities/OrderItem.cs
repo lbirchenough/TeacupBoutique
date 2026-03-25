@@ -20,6 +20,9 @@ public class OrderItem
     [Column(TypeName = "decimal(10,2)")]
     public decimal Total { get; set; }
 
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal DepositAmount { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Adding a foreign key property for easier querying

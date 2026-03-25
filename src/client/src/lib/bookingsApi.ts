@@ -3,6 +3,12 @@ import type { BookingDetail, BookingListItem, ReturnCondition } from './types'
 
 const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5054'
 
+export interface CompleteBookingRequest {
+    depositAmountKept: number | null
+    completionNotes: string | null
+    returnPhotoUrls: string[]
+}
+
 export interface BookingItemReturnDto {
     bookingItemId: string
     returnCondition: ReturnCondition
@@ -48,12 +54,25 @@ export const bookingsApi = {
         if (!response.ok) throw new Error(`Failed to mark booking as returned (${response.status})`)
     },
 
-    complete: async (id: string): Promise<void> => {
+    complete: async (id: string, request: CompleteBookingRequest): Promise<void> => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${id}/complete`, {
             method: 'PUT',
-            headers: { ...authHeaders() },
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify(request),
         })
         if (!response.ok) throw new Error(`Failed to complete booking (${response.status})`)
+    },
+
+    uploadPhoto: async (bookingId: string, file: File): Promise<{ url: string }> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/bookings/${bookingId}/photos`, {
+            method: 'POST',
+            headers: { ...authHeaders() },
+            body: formData,
+        })
+        if (!response.ok) throw new Error(`Failed to upload photo (${response.status})`)
+        return response.json()
     },
 
     cancelBooking: async (id: string): Promise<void> => {

@@ -12,4 +12,5 @@ public interface IOrderEvent
     Task HandlePaymentFailed(string message);
     Task CancelOrder(Order order, string reason);
     Task HandleBookingCancelled(string message);
+    Task HandleBookingCompleted(string message);
 }

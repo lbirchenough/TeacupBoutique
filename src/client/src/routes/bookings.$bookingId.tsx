@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { bookingsApi, type BookingItemReturnDto } from '../lib/bookingsApi'
+import { bookingsApi, type BookingItemReturnDto, type CompleteBookingRequest } from '../lib/bookingsApi'
 import { ordersApi } from '../lib/ordersApi'
 import type { BookingDetail, BookingStatus, OrderDetail, ReturnCondition } from '../lib/types'
 
@@ -32,6 +32,10 @@ function BookingDetailPage() {
     const [showReturnForm, setShowReturnForm] = useState(false)
     const [returnItems, setReturnItems] = useState<Record<string, { condition: ReturnCondition; notes: string }>>({})
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)
+    const [showCompleteForm, setShowCompleteForm] = useState(false)
+    const [depositAmountKept, setDepositAmountKept] = useState('')
+    const [completionNotes, setCompletionNotes] = useState('')
+    const [photoFiles, setPhotoFiles] = useState<File[]>([])
 
     const { data: booking, isPending, isError } = useQuery<BookingDetail>({
         queryKey: ['booking', bookingId],
@@ -67,8 +71,26 @@ function BookingDetailPage() {
     })
 
     const completeMutation = useMutation({
-        mutationFn: () => bookingsApi.complete(bookingId),
-        onSuccess: invalidate,
+        mutationFn: async () => {
+            const urls: string[] = []
+            for (const file of photoFiles) {
+                const { url } = await bookingsApi.uploadPhoto(bookingId, file)
+                urls.push(url)
+            }
+            const request: CompleteBookingRequest = {
+                depositAmountKept: depositAmountKept ? parseFloat(depositAmountKept) : null,
+                completionNotes: completionNotes || null,
+                returnPhotoUrls: urls,
+            }
+            return bookingsApi.complete(bookingId, request)
+        },
+        onSuccess: () => {
+            setShowCompleteForm(false)
+            setDepositAmountKept('')
+            setCompletionNotes('')
+            setPhotoFiles([])
+            invalidate()
+        },
     })
 
     const cancelMutation = useMutation({
@@ -138,11 +160,11 @@ function BookingDetailPage() {
                                     isPending={false}
                                 />
                             )}
-                            {booking.status === 'Returned' && (
+                            {booking.status === 'Returned' && !showCompleteForm && (
                                 <ActionButton
-                                    label="Complete"
-                                    onClick={() => completeMutation.mutate()}
-                                    isPending={completeMutation.isPending}
+                                    label="Complete Booking"
+                                    onClick={() => setShowCompleteForm(true)}
+                                    isPending={false}
                                 />
                             )}
                             {(booking.status === 'Reserved' || booking.status === 'Confirmed') && !showCancelConfirm && (
@@ -176,6 +198,109 @@ function BookingDetailPage() {
                             </div>
                             {cancelMutation.isError && (
                                 <p className="text-xs text-red-600">{cancelMutation.error.message}</p>
+                            )}
+                        </div>
+                    )}
+                    {showCompleteForm && (
+                        <div className="mt-4 pt-4 border-t border-gold/20 space-y-4">
+                            <p className="text-sm text-brown font-serif">Complete this booking</p>
+                            <div className="space-y-3">
+                                {order?.depositTotal != null && order.depositTotal > 0 && (
+                                    <div>
+                                        <div className="flex justify-between mb-1">
+                                            <label className="text-xs font-semibold text-brown-light uppercase tracking-widest">
+                                                Deposit kept
+                                            </label>
+                                            <span className="text-sm font-semibold text-brown">
+                                                {depositAmountKept === ''
+                                                    ? 'Not recorded'
+                                                    : parseFloat(depositAmountKept) === 0
+                                                        ? 'Full refund ($0.00 kept)'
+                                                        : parseFloat(depositAmountKept) === order.depositTotal
+                                                            ? `Full deposit kept ($${order.depositTotal.toFixed(2)})`
+                                                            : `$${parseFloat(depositAmountKept).toFixed(2)} kept`}
+                                            </span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max={order.depositTotal}
+                                            step="0.01"
+                                            value={depositAmountKept === '' ? 0 : depositAmountKept}
+                                            onChange={e => setDepositAmountKept(e.target.value)}
+                                            className="w-full accent-gold"
+                                        />
+                                        <div className="flex justify-between text-xs text-brown-light mt-1">
+                                            <span>$0 (full refund)</span>
+                                            <span>${order.depositTotal.toFixed(2)} (keep all)</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDepositAmountKept('')}
+                                            className="text-xs text-brown-light hover:text-brown transition-colors mt-1"
+                                        >
+                                            Clear (don't record deposit decision)
+                                        </button>
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="text-xs font-semibold text-brown-light uppercase tracking-widest block mb-1">
+                                        Completion notes
+                                    </label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Visible to customer on their order page"
+                                        value={completionNotes}
+                                        onChange={e => setCompletionNotes(e.target.value)}
+                                        className="w-full border border-gold/20 px-3 py-2 text-sm text-brown placeholder-brown-light/50 focus:outline-none focus:border-gold/50 resize-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-brown-light uppercase tracking-widest block mb-1">
+                                        Photos
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={e => setPhotoFiles(Array.from(e.target.files ?? []))}
+                                        className="text-sm text-brown-light"
+                                    />
+                                    {photoFiles.length > 0 && (
+                                        <ul className="mt-2 space-y-1">
+                                            {photoFiles.map((f, i) => (
+                                                <li key={i} className="flex items-center justify-between text-xs text-brown-mid">
+                                                    <span>{f.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPhotoFiles(prev => prev.filter((_, j) => j !== i))}
+                                                        className="text-red-400 hover:text-red-600 ml-2"
+                                                    >
+                                                        remove
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => completeMutation.mutate()}
+                                    disabled={completeMutation.isPending}
+                                    className="text-xs bg-brown hover:bg-brown-mid text-cream px-5 py-2 transition-colors disabled:opacity-50"
+                                >
+                                    {completeMutation.isPending ? (photoFiles.length > 0 ? 'Uploading…' : 'Completing…') : 'Confirm Completion'}
+                                </button>
+                                <button
+                                    onClick={() => setShowCompleteForm(false)}
+                                    className="text-xs text-brown-light hover:text-brown transition-colors px-3"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                            {completeMutation.isError && (
+                                <p className="text-xs text-red-600">{completeMutation.error.message}</p>
                             )}
                         </div>
                     )}

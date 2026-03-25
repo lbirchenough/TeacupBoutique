@@ -19,4 +19,5 @@ public class CreateOrderItemDto
 
     public decimal PricePerDay { get; set; }
     public decimal Subtotal { get; set; }
+    public decimal DepositAmount { get; set; }
 }

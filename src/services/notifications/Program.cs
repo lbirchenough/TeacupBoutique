@@ -21,6 +21,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHostedService<OrderConfirmedConsumer>();
 builder.Services.AddHostedService<PaymentFailedConsumer>();
 builder.Services.AddHostedService<OrderCancelledConsumer>();
+builder.Services.AddHostedService<OrderCompletedConsumer>();
 
 var host = builder.Build();
 host.Run();

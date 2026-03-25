@@ -141,7 +141,10 @@ function OrderDetailPage() {
                                 <div className="flex-1 min-w-0">
                                     <p className="font-serif text-brown truncate">{item.name}</p>
                                     {item.colour && <p className="text-xs text-brown-light tracking-wide">{item.colour}</p>}
-                                    <p className="text-xs text-brown-mid mt-0.5">Qty {item.quantity} × ${item.unitPrice.toFixed(2)}</p>
+                                    <p className="text-xs text-brown-mid mt-0.5">Qty {item.quantity} × ${item.unitPrice.toFixed(2)}/day</p>
+                                    {item.depositAmount > 0 && (
+                                        <p className="text-xs text-brown-light mt-0.5">+${item.depositAmount.toFixed(2)} deposit</p>
+                                    )}
                                 </div>
                                 <p className="font-semibold text-brown shrink-0">${item.total.toFixed(2)}</p>
                             </div>
@@ -156,11 +159,49 @@ function OrderDetailPage() {
                         <div className="flex justify-between text-brown-light text-xs">
                             <span>GST (10%)</span><span>${order.tax.toFixed(2)}</span>
                         </div>
+                        <div className="flex justify-between text-brown pt-2 border-t border-gold/20 font-medium">
+                            <span>Hire total</span><span>${(order.total - order.depositTotal).toFixed(2)}</span>
+                        </div>
+                        {order.depositTotal > 0 && (
+                            <div className="flex justify-between text-brown-mid">
+                                <div>
+                                    <span>Security deposit</span>
+                                    <p className="text-xs text-brown-light mt-0.5">Refundable subject to item condition</p>
+                                </div>
+                                <span>${order.depositTotal.toFixed(2)}</span>
+                            </div>
+                        )}
                         <div className="flex justify-between font-semibold text-brown text-base pt-2 border-t border-gold/20">
-                            <span>Total</span><span>${order.total.toFixed(2)}</span>
+                            <span>Total due</span><span>${order.total.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
+
+                {/* Return Summary — shown when completed with data */}
+                {order.status === 'Completed' && (order.completionNotes || order.depositAmountKept != null || (order.returnPhotoUrls?.length ?? 0) > 0) && (
+                    <div className="bg-white border border-gold/20 p-6">
+                        <h2 className="font-serif text-lg text-brown mb-5">Return Summary</h2>
+                        {order.depositAmountKept != null && (
+                            <p className="text-sm text-brown-mid mb-3">
+                                {order.depositAmountKept === 0
+                                    ? 'Your full deposit will be returned to you.'
+                                    : `A deposit amount of $${order.depositAmountKept.toFixed(2)} has been retained.`}
+                            </p>
+                        )}
+                        {order.completionNotes && (
+                            <p className="text-sm text-brown-mid mb-3 italic">"{order.completionNotes}"</p>
+                        )}
+                        {(order.returnPhotoUrls?.length ?? 0) > 0 && (
+                            <div className="grid grid-cols-3 gap-3 mt-3">
+                                {order.returnPhotoUrls!.map((url, i) => (
+                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                        <img src={url} alt={`Return photo ${i + 1}`} className="w-full aspect-square object-cover border border-gold/10" />
+                                    </a>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Registration prompt for guests */}
                 {!order.userId && (

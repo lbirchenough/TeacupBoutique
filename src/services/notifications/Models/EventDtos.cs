@@ -26,3 +26,13 @@ public record OrderCancelledEvent(
     string CustomerName,
     string CustomerEmail,
     DateOnly ReservationDate);
+
+public record OrderCompletedEvent(
+    Guid OrderId,
+    string OrderNumber,
+    Guid AccessToken,
+    string CustomerName,
+    string CustomerEmail,
+    DateOnly ReservationDate,
+    decimal? DepositAmountKept,
+    string? CompletionNotes);

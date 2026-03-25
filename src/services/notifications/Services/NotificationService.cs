@@ -93,4 +93,48 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
             HtmlBody = html
         });
     }
+
+    public async Task SendOrderCompletedAsync(OrderCompletedEvent evt)
+    {
+        var frontendUrl = config["FrontendUrl"] ?? "http://localhost:5173";
+        var trackingUrl = $"{frontendUrl}/orders/{evt.OrderNumber}?token={evt.AccessToken}";
+
+        var depositHtml = evt.DepositAmountKept switch
+        {
+            null => "",
+            0 => "<p>Your full deposit will be returned to you.</p>",
+            _ => $"<p>A deposit amount of <strong>${evt.DepositAmountKept:F2}</strong> has been retained. Please see your order details and return summary.</p>"
+        };
+
+        var notesHtml = !string.IsNullOrEmpty(evt.CompletionNotes)
+            ? $"<p><strong>Notes from us:</strong> {evt.CompletionNotes}</p>"
+            : "";
+
+        var html = $"""
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #3d1f0d;">
+              <h1 style="color:#c4953a;">Your Booking is Complete</h1>
+              <p>Hi {evt.CustomerName},</p>
+              <p>Thank you for your booking. Your items have been returned and your booking for <strong>{evt.ReservationDate:d MMMM yyyy}</strong> is now complete.</p>
+              <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+                <tr><td><strong>Order</strong></td><td>{evt.OrderNumber}</td></tr>
+                <tr><td><strong>Event Date</strong></td><td>{evt.ReservationDate:d MMMM yyyy}</td></tr>
+              </table>
+              {depositHtml}
+              {notesHtml}
+              <p style="margin-top:24px;">
+                <a href="{trackingUrl}" style="display:inline-block; background:#c4953a; color:#fff; padding:10px 20px; text-decoration:none; border-radius:4px;">View Order Summary</a>
+              </p>
+              <p style="margin-top:24px; color:#c4953a;">Thank you for choosing Teacup Boutique — we hope your occasion was truly special.</p>
+            </div>
+            """;
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.CustomerEmail,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.CustomerName,
+            Subject = $"Your booking is complete – {evt.OrderNumber}",
+            HtmlBody = html
+        });
+    }
 }

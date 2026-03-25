@@ -76,7 +76,7 @@ namespace inventory.Controllers
         }
 
         [HttpPut("{id:guid}/complete")]
-        public async Task<IActionResult> Complete(Guid id)
+        public async Task<IActionResult> Complete(Guid id, [FromBody] CompleteBookingRequest request)
         {
             var booking = await _context.Bookings.FindAsync(id);
             if (booking is null) return NotFound();
@@ -86,7 +86,18 @@ namespace inventory.Controllers
             booking.Status = BookingStatus.Completed;
             booking.CompletedAt = DateTime.UtcNow;
             booking.UpdatedAt = DateTime.UtcNow;
+            booking.DepositAmountKept = request.DepositAmountKept;
+            booking.CompletionNotes = request.CompletionNotes;
             await _context.SaveChangesAsync();
+
+            var evt = new BookingCompletedEvent(
+                booking.OrderId,
+                booking.Id,
+                request.DepositAmountKept,
+                request.CompletionNotes,
+                request.ReturnPhotoUrls ?? []);
+            await _publisher.PublishAsync("inventory.BookingCompleted", JsonSerializer.Serialize(evt));
+
             return NoContent();
         }
 
@@ -164,4 +175,5 @@ namespace inventory.Controllers
 
     public record BookingItemReturnDto(Guid BookingItemId, ReturnCondition ReturnCondition, string? ReturnNotes);
     public record MarkReturnedRequest(List<BookingItemReturnDto> Items);
+    public record CompleteBookingRequest(decimal? DepositAmountKept, string? CompletionNotes, List<string>? ReturnPhotoUrls);
 }
