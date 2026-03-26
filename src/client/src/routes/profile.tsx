@@ -13,6 +13,11 @@ function ProfilePage() {
   const queryClient = useQueryClient()
 
   const [fullName, setFullName] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordMatchError, setPasswordMatchError] = useState<string | null>(null)
+  const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [profileEmail, setProfileEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [emailVerificationPending, setEmailVerificationPending] = useState(false)
@@ -46,9 +51,30 @@ function ProfilePage() {
     },
   })
 
+  const changePasswordMutation = useMutation({
+    mutationFn: () => authApi.changePassword({ currentPassword, newPassword }),
+    onSuccess: () => {
+      setPasswordSuccess(true)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     updateMutation.mutate()
+  }
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newPassword !== confirmPassword) {
+      setPasswordMatchError('Passwords do not match')
+      return
+    }
+    setPasswordMatchError(null)
+    setPasswordSuccess(false)
+    changePasswordMutation.mutate()
   }
 
   return (
@@ -129,6 +155,74 @@ function ProfilePage() {
             </div>
           </form>
         )}
+
+        <div className="mt-12 pt-8 border-t border-gold/20">
+          <p className="text-xs tracking-[0.2em] uppercase text-brown-light mb-6">Security</p>
+          <form onSubmit={handlePasswordSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown focus:outline-none focus:border-gold transition-colors"
+                placeholder="Enter current password"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown focus:outline-none focus:border-gold transition-colors"
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs tracking-[0.15em] uppercase text-brown-light mb-2">
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full bg-white border border-gold/30 px-4 py-3 text-sm text-brown focus:outline-none focus:border-gold transition-colors"
+                placeholder="Re-enter new password"
+              />
+              {passwordMatchError && (
+                <p className="text-red-500 text-xs mt-1.5">{passwordMatchError}</p>
+              )}
+            </div>
+
+            {changePasswordMutation.isError && (
+              <p className="text-sm text-red-600">{changePasswordMutation.error.message}</p>
+            )}
+
+            <div className="flex items-center gap-4 pt-1">
+              <button
+                type="submit"
+                disabled={changePasswordMutation.isPending}
+                className="text-xs tracking-widest uppercase bg-brown text-cream px-8 py-3 hover:bg-brown-mid transition-colors disabled:opacity-50"
+              >
+                {changePasswordMutation.isPending ? 'Updating…' : 'Update Password'}
+              </button>
+              {passwordSuccess && (
+                <span className="text-xs text-gold tracking-wide">Password updated</span>
+              )}
+            </div>
+          </form>
+        </div>
 
         <div className="mt-12 pt-8 border-t border-gold/20">
           <Link

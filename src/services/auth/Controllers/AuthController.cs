@@ -143,6 +143,33 @@ namespace auth.Controllers
             Response.Cookies.Append("RefreshToken", refreshToken, cookieOptions);
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
+        {
+            var user = await userManager.FindByEmailAsync(req.Email);
+            if (user is not null && user.EmailConfirmed)
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(user);
+                var link = $"{clientUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(req.Email)}";
+                await publisher.PublishAsync("auth.PasswordResetRequested",
+                    JsonSerializer.Serialize(new PasswordResetRequestedEvent(req.Email, link)));
+            }
+            return Ok(); // always 200 — don't reveal whether email exists
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req)
+        {
+            var user = await userManager.FindByEmailAsync(req.Email);
+            if (user is null) return BadRequest("Invalid request.");
+
+            var result = await userManager.ResetPasswordAsync(user, req.Token, req.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
+
+            return Ok();
+        }
+
         [Authorize]
         [HttpGet("me")]
         public async Task<ActionResult<ProfileResponse>> GetProfile()
@@ -192,6 +219,26 @@ namespace auth.Controllers
 
             if (!result.Succeeded)
                 return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
+
+            return NoContent();
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
+        {
+            var user = await userManager.GetUserAsync(User);
+            if (user is null) return Unauthorized();
+
+            var check = await userManager.CheckPasswordAsync(user, req.CurrentPassword);
+            if (!check) return BadRequest("Current password is incorrect.");
+
+            var result = await userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
+
+            await publisher.PublishAsync("auth.PasswordChanged",
+                JsonSerializer.Serialize(new PasswordChangedEvent(user.Email!)));
 
             return NoContent();
         }

@@ -109,6 +109,27 @@ export const authApi = {
     return response.json()
   },
 
+  forgotPassword: async (data: { email: string }): Promise<void> => {
+    await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    // always resolves — never throw, to avoid account enumeration
+  },
+
+  resetPassword: async (data: { email: string; token: string; newPassword: string }): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'Failed to reset password')
+    }
+  },
+
   verifyEmail: async (params: { email: string; token: string }): Promise<AuthResponse> => {
     const url = new URL(`${API_BASE_URL}/api/auth/verify-email`)
     url.searchParams.set('email', params.email)
@@ -131,6 +152,19 @@ export const authApi = {
       throw new Error(message || 'Invalid or expired link')
     }
     return response.json()
+  },
+
+  changePassword: async (data: { currentPassword: string; newPassword: string }): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/auth/change-password`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(data),
+    })
+    if (!response.ok) {
+      const message = await response.text()
+      throw new Error(message || 'Failed to change password')
+    }
   },
 
   refresh: async (): Promise<AuthResponse> => {

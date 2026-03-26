@@ -200,6 +200,63 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
         });
     }
 
+    public async Task SendPasswordResetAsync(PasswordResetRequestedEvent evt)
+    {
+        var html = $"""
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #3d1f0d;">
+              <h1 style="color:#c4953a;">Reset Your Password</h1>
+              <p>We received a request to reset the password for your Teacup Boutique account.</p>
+              <p>Click the button below to choose a new password.</p>
+              <p style="margin-top:24px;">
+                <a href="{evt.ResetLink}" style="display:inline-block; background:#c4953a; color:#fff; padding:12px 24px; text-decoration:none; border-radius:4px; font-size:16px;">Reset My Password</a>
+              </p>
+              <p style="margin-top:16px; font-size:13px; color:#888;">This link expires in 1 day.</p>
+              <p style="margin-top:16px; padding:16px; background:#fff3cd; border-radius:4px; font-size:14px; color:#856404;">
+                If you did not request a password reset, you can safely ignore this email. Your password will not change.
+              </p>
+              <p style="margin-top:24px; color:#c4953a;">Teacup Boutique</p>
+            </div>
+            """;
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.Email,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.Email,
+            Subject = "Reset your Teacup Boutique password",
+            HtmlBody = html
+        });
+    }
+
+    public async Task SendPasswordChangedAsync(PasswordChangedEvent evt)
+    {
+        var frontendUrl = config["FrontendUrl"] ?? "http://localhost:5173";
+
+        var html = $"""
+            <div style="font-family: Georgia, serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #3d1f0d;">
+              <h1 style="color:#c4953a;">Password Changed</h1>
+              <p>The password for your Teacup Boutique account was recently changed.</p>
+              <p>If this was you, no further action is needed.</p>
+              <p style="margin-top:16px; padding:16px; background:#fff3cd; border-radius:4px; font-size:14px; color:#856404;">
+                If you did not make this change, please reset your password immediately using the button below.
+              </p>
+              <p style="margin-top:24px;">
+                <a href="{frontendUrl}/forgot-password" style="display:inline-block; background:#c4953a; color:#fff; padding:12px 24px; text-decoration:none; border-radius:4px; font-size:16px;">Reset My Password</a>
+              </p>
+              <p style="margin-top:24px; color:#c4953a;">Teacup Boutique</p>
+            </div>
+            """;
+
+        await emailService.SendAsync(new EmailMessage
+        {
+            //To = evt.Email,
+            To = "luke.birchenough@outlook.com",
+            ToName = evt.Email,
+            Subject = "Your Teacup Boutique password has been changed",
+            HtmlBody = html
+        });
+    }
+
     public async Task SendEmailChangeVerificationAsync(EmailChangeVerificationRequestedEvent evt)
     {
         var html = $"""

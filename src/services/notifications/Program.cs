@@ -23,8 +23,10 @@ builder.Services.AddHostedService<PaymentFailedConsumer>();
 builder.Services.AddHostedService<OrderCancelledConsumer>();
 builder.Services.AddHostedService<OrderCompletedConsumer>();
 builder.Services.AddHostedService<EmailChangedConsumer>();
+builder.Services.AddHostedService<PasswordResetConsumer>();
 builder.Services.AddHostedService<EmailVerificationConsumer>();
 builder.Services.AddHostedService<EmailChangeVerificationConsumer>();
+builder.Services.AddHostedService<PasswordChangedConsumer>();
 
 var host = builder.Build();
 host.Run();

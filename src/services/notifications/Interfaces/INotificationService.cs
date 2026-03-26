@@ -11,4 +11,6 @@ public interface INotificationService
     Task SendEmailChangedAsync(EmailChangedEvent evt);
     Task SendEmailVerificationAsync(EmailVerificationRequestedEvent evt);
     Task SendEmailChangeVerificationAsync(EmailChangeVerificationRequestedEvent evt);
+    Task SendPasswordResetAsync(PasswordResetRequestedEvent evt);
+    Task SendPasswordChangedAsync(PasswordChangedEvent evt);
 }
