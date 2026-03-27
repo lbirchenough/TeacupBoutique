@@ -10,12 +10,14 @@ namespace orders.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class OrdersController(OrdersDbContext _context, IOrderEvent orderEventService) : ControllerBase
+    public class OrdersController(OrdersDbContext _context, IOrderEvent orderEventService, TurnstileService turnstileService) : ControllerBase
     {
-        
+
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
         {
+            if (!await turnstileService.VerifyAsync(dto.TurnstileToken))
+                return BadRequest("CAPTCHA verification failed.");
             var order = new Order
             {
                 OrderNumber = $"ORD-{DateTime.UtcNow:yyyy}-{Guid.NewGuid():N}",

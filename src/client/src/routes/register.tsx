@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { authApi } from '../lib/api'
 import { useAuth } from '../lib/useAuth'
 import { ordersApi } from '../lib/ordersApi'
@@ -27,6 +28,7 @@ function RegisterPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [verificationSent, setVerificationSent] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
   const registerMutation = useMutation({
     mutationFn: authApi.register,
@@ -78,8 +80,8 @@ function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (validate()) {
-      registerMutation.mutate({ email, password })
+    if (validate() && turnstileToken) {
+      registerMutation.mutate({ email, password, turnstileToken })
     }
   }
 
@@ -180,6 +182,14 @@ function RegisterPage() {
               )}
             </div>
 
+            <div className="mb-6">
+              <Turnstile
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+              />
+            </div>
+
             {serverError && (
               <p className="text-sm text-center text-brown-mid bg-gold-pale border border-gold/30 px-4 py-2.5 mb-6">
                 {serverError}
@@ -188,7 +198,7 @@ function RegisterPage() {
 
             <button
               type="submit"
-              disabled={registerMutation.isPending}
+              disabled={registerMutation.isPending || !turnstileToken}
               className="w-full bg-brown hover:bg-brown-mid text-cream text-xs tracking-[0.2em] uppercase font-semibold py-3.5 transition-colors disabled:opacity-50"
             >
               {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
