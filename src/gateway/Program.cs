@@ -49,20 +49,20 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = 429;
 
-    options.AddPolicy("fixed-5-per-min", httpContext =>
+    options.AddPolicy("fixed-10-per-min", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey: $"{httpContext.Connection.RemoteIpAddress}:{httpContext.Request.Path}",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromMinutes(1),
-                PermitLimit = 5,
+                PermitLimit = 10,
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
 
     options.AddPolicy("fixed-5-per-hour", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey: $"{httpContext.Connection.RemoteIpAddress}:{httpContext.Request.Path}",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromHours(1),
@@ -73,7 +73,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("fixed-100-per-min", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            partitionKey: $"{httpContext.Connection.RemoteIpAddress}:{httpContext.Request.Path}",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 Window = TimeSpan.FromMinutes(1),

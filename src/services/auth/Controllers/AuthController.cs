@@ -48,7 +48,7 @@ namespace auth.Controllers
                 return Unauthorized("Invalid credentials");
 
             if (await userManager.IsLockedOutAsync(user))
-                return Unauthorized("Account is temporarily locked. Please try again later.");
+                return StatusCode(401, "Account locked due to too many failed attempts. Please try again in 15 minutes.");
 
             var ok = await userManager.CheckPasswordAsync(user, req.Password);
             if (!ok)
