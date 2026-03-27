@@ -13,18 +13,6 @@ namespace orders.Controllers
     public class OrdersController(OrdersDbContext _context, IOrderEvent orderEventService) : ControllerBase
     {
         
-        [HttpGet]
-        public async Task<IActionResult> GetOrders()
-        {
-            
-            var orders = await _context.Orders
-                .Where(x => x.Status != OrderStatus.Completed)
-                //.Include(o => o.OrderItems)
-                .AsNoTracking()
-                .ToListAsync();
-            return Ok(orders);
-        }
-
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
         {

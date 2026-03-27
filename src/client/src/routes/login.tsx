@@ -20,7 +20,6 @@ function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: authApi.login,
     onSuccess: async (data) => {
-      console.log('Login response:', data)
       setToken(data.accessToken)
       await ordersApi.claimOrders()
       navigate({ to: '/' })
@@ -137,7 +136,7 @@ function LoginPage() {
           <div className="mt-6 pt-6 border-t border-gold/20 text-center">
             <p className="text-sm text-brown-mid">
               Don't have an account?{' '}
-              <Link to="/register" className="text-brown font-semibold hover:text-gold transition-colors underline underline-offset-2">
+              <Link to="/register" search={{ email: undefined }} className="text-brown font-semibold hover:text-gold transition-colors underline underline-offset-2">
                 Create one
               </Link>
             </p>
