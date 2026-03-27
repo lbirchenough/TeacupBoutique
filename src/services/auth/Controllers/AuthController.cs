@@ -47,13 +47,20 @@ namespace auth.Controllers
             if (user is null)
                 return Unauthorized("Invalid credentials");
 
+            if (await userManager.IsLockedOutAsync(user))
+                return Unauthorized("Account is temporarily locked. Please try again later.");
+
             var ok = await userManager.CheckPasswordAsync(user, req.Password);
             if (!ok)
+            {
+                await userManager.AccessFailedAsync(user);
                 return Unauthorized("Invalid credentials");
+            }
 
             if (!user.EmailConfirmed)
                 return Unauthorized("Please verify your email before logging in.");
 
+            await userManager.ResetAccessFailedCountAsync(user);
             await SetRefreshTokenCookie(user);
 
             var token = await tokenService.CreateAccessToken(user);
