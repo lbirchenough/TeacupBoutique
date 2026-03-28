@@ -30,7 +30,6 @@ function CartPage() {
     })
     const [showDateChangeConfirm, setShowDateChangeConfirm] = useState(false)
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
-    const [turnstileFailed, setTurnstileFailed] = useState(false)
 
     const orderMutation = useMutation({
         mutationFn: (dto: CreateOrderRequest) => ordersApi.createOrder(dto),
@@ -296,26 +295,18 @@ function CartPage() {
                             </Field>
 
                             <Turnstile
-                                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_INVISIBLE}
-                                options={{ appearance: 'invisible' }}
+                                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
                                 onSuccess={(token) => setTurnstileToken(token)}
-                                onError={() => setTurnstileFailed(true)}
+                                onExpire={() => setTurnstileToken(null)}
                             />
 
-                            {turnstileFailed ? (
-                                <Turnstile
-                                    siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
-                                    onSuccess={(token) => { setTurnstileToken(token); setTurnstileFailed(false) }}
-                                />
-                            ) : (
-                                <button
-                                    type="submit"
-                                    disabled={orderMutation.isPending || !turnstileToken}
-                                    className="w-full bg-brown hover:bg-brown-mid text-cream py-3.5 text-xs font-semibold tracking-[0.15em] uppercase disabled:opacity-50 transition-colors mt-2"
-                                >
-                                    {orderMutation.isPending ? 'Placing Order…' : 'Place Order'}
-                                </button>
-                            )}
+                            <button
+                                type="submit"
+                                disabled={orderMutation.isPending || !turnstileToken}
+                                className="w-full bg-brown hover:bg-brown-mid text-cream py-3.5 text-xs font-semibold tracking-[0.15em] uppercase disabled:opacity-50 transition-colors mt-2"
+                            >
+                                {orderMutation.isPending ? 'Placing Order…' : 'Place Order'}
+                            </button>
                         </form>
                     </div>
                 </div>

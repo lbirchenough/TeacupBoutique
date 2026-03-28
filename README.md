@@ -176,12 +176,131 @@ This recreates containers and resets the database.
 
 ---
 
-# Security
+# Configuration & Secrets Management
 
-Sensitive configuration such as:
+Configuration is split between non-sensitive values committed in `appsettings.Development.json` and secrets which are never committed.
 
-- database credentials
-- JWT signing keys
-- environment-specific configuration
+There are two pathways depending on how you run the app.
 
-is stored **locally in `.env` files or .NET user secrets**, and excluded from source control via `.gitignore`.
+---
+
+## Pathway 1 — Docker Compose (.secrets/*.env files)
+
+Used when running via `docker compose up`. Each service reads its secrets from a `.env` file in the `.secrets/` directory (gitignored).
+
+### .secrets/auth.env
+```
+ConnectionStrings__AuthDb=
+Jwt__Key=
+AdminSeed__Email=
+AdminSeed__Password=
+Turnstile__SecretKey=
+```
+
+### .secrets/gateway.env
+```
+Jwt__Key=
+```
+
+### .secrets/orders.env
+```
+ConnectionStrings__OrdersDb=
+Jwt__Key=
+Turnstile__SecretKey=
+```
+
+### .secrets/payments.env
+```
+ConnectionStrings__PaymentsDb=
+Stripe__SecretKey=
+Stripe__WebhookSecret=
+Turnstile__SecretKey=
+```
+
+### .secrets/inventory.env
+```
+ConnectionStrings__InventoryDb=
+CLOUDINARY_URL=
+```
+
+### .secrets/notifications.env
+```
+Mailgun__ApiKey=
+```
+
+### .secrets/sql-auth.env
+### .secrets/sql-inventory.env
+### .secrets/sql-orders.env
+### .secrets/sql-payments.env
+```
+MSSQL_SA_PASSWORD=
+```
+
+---
+
+## Pathway 2 — dotnet run (.NET User Secrets)
+
+Used when running services individually with `dotnet run`. Secrets are stored outside the repo via the .NET user-secrets system (single colon separator instead of double underscore).
+
+```bash
+cd src/services/auth
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:AuthDb" ""
+dotnet user-secrets set "Jwt:Key" ""
+dotnet user-secrets set "AdminSeed:Email" ""
+dotnet user-secrets set "AdminSeed:Password" ""
+dotnet user-secrets set "Turnstile:SecretKey" ""
+```
+
+```bash
+cd src/services/orders
+dotnet user-secrets set "ConnectionStrings:OrdersDb" ""
+dotnet user-secrets set "Jwt:Key" ""
+dotnet user-secrets set "Turnstile:SecretKey" ""
+```
+
+```bash
+cd src/services/payments
+dotnet user-secrets set "ConnectionStrings:PaymentsDb" ""
+dotnet user-secrets set "Stripe:SecretKey" ""
+dotnet user-secrets set "Stripe:WebhookSecret" ""
+dotnet user-secrets set "Turnstile:SecretKey" ""
+```
+
+```bash
+cd src/services/inventory
+dotnet user-secrets set "ConnectionStrings:InventoryDb" ""
+dotnet user-secrets set "CLOUDINARY_URL" ""
+```
+
+```bash
+cd src/services/notifications
+dotnet user-secrets set "Mailgun:ApiKey" ""
+```
+
+```bash
+cd src/services/gateway
+dotnet user-secrets set "Jwt:Key" ""
+```
+
+---
+
+## Frontend (Vite)
+
+`src/client/.env.development` is committed and contains non-sensitive dev config.
+
+`src/client/.env.development` contains:
+
+```
+VITE_TURNSTILE_SITE_KEY_MANAGED=    ← public, safe to commit
+VITE_STRIPE_PUBLISHABLE_KEY=        ← public, safe to commit
+```
+
+For local overrides, create `src/client/.env.local` (gitignored):
+
+```
+VITE_TURNSTILE_SITE_KEY_MANAGED=
+VITE_STRIPE_PUBLISHABLE_KEY=
+```
+
+In CI/production, set these as environment variables before running `npm run build`.

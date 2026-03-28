@@ -59,7 +59,6 @@ interface StripePaymentFormProps {
 
 export function StripePaymentForm({ orderId, amount, onSuccess }: StripePaymentFormProps) {
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
-    const [turnstileFailed, setTurnstileFailed] = useState(false)
 
     const { data, isPending, isError } = useQuery({
         queryKey: ['payment-intent', orderId],
@@ -68,22 +67,10 @@ export function StripePaymentForm({ orderId, amount, onSuccess }: StripePaymentF
         staleTime: Infinity, // don't re-create the intent on refetch
     })
 
-    if (!turnstileToken && !turnstileFailed) return (
-        <>
-            <p className="text-sm text-brown-light">Preparing secure payment…</p>
-            <Turnstile
-                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_INVISIBLE}
-                options={{ appearance: 'invisible' }}
-                onSuccess={(token) => setTurnstileToken(token)}
-                onError={() => setTurnstileFailed(true)}
-            />
-        </>
-    )
-
-    if (turnstileFailed && !turnstileToken) return (
+    if (!turnstileToken) return (
         <Turnstile
             siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
-            onSuccess={(token) => { setTurnstileToken(token); setTurnstileFailed(false) }}
+            onSuccess={(token) => setTurnstileToken(token)}
         />
     )
 
