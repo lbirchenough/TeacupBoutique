@@ -17,11 +17,11 @@ public class TurnstileService(HttpClient httpClient, IConfiguration config)
                     ["response"] = token
                 }));
             var json = await response.Content.ReadFromJsonAsync<TurnstileResponse>();
-            return json?.Success ?? true;
+            return json?.Success ?? false;
         }
         catch
         {
-            return true; // fail open if Cloudflare unreachable
+            return false;
         }
     }
 }

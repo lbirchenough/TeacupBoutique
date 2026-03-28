@@ -33,12 +33,16 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole("Admin"));
 });
 
+var allowedOrigins = builder.Configuration["Cors:AllowedOrigins"]?
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? [];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("SpaDev", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowCredentials()
             .AllowAnyMethod();

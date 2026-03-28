@@ -134,10 +134,11 @@ namespace auth.Controllers
             //This is more secure than just storing token in local storage on client browser.
 
             //Generate a token and update user in db with RefreshToken and RefreshTokenExpiry
+            var refreshTokenExpiryDays = configuration.GetValue<int?>("Jwt:RefreshTokenExpiryDays") ?? 7;
             var refreshToken = tokenService.GeneratateRefreshToken();
             //Both RefreshToken and RefreshTokenExpiry are columns in user table added by IdentityFramework
             user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
             await userManager.UpdateAsync(user);
 
             //Create cookie options with HttpOnly and long expiry
@@ -146,7 +147,7 @@ namespace auth.Controllers
                 HttpOnly = true, //HttpOnly cookies are not accessible from client side javascript / apps, not accessible clientside
                 Secure = true, //only sent over https so ensure using https in dev
                 SameSite = SameSiteMode.Strict, // samesite is for controlling if a cookie gets sent, same site considers scheme + hostname NOT PORT, so I just needed to make sure angular was running on https and the cookies started being sent
-                Expires = DateTime.UtcNow.AddDays(7) //will get removed from browser after 7 days
+                Expires = DateTime.UtcNow.AddDays(refreshTokenExpiryDays) //will get removed from browser after 7 days
             };
 
             //Append cookie RefreshToken to the response

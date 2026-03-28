@@ -1,0 +1,28 @@
+# v1 Pre-Deployment Checklist
+
+## Critical (Security / Data Integrity)
+- [ ] Fix inventory race condition (atomic stock check + booking creation)
+- [ ] Add price validation on order submission against DB product prices
+- [x] Fix CAPTCHA fail-open (TurnstileService should fail closed when Cloudflare unreachable)
+- [ ] Implement refund pathway for cancelled-after-payment orders
+
+## High Priority (Production Readiness)
+- [x] Make CORS configurable per environment
+- [x] Move JWT/refresh token expiry to config
+- [x] Remove WeatherForecast template controller from auth service
+- [ ] Add production migration strategy (replace auto-migrate on startup)
+- [ ] Replace Console.WriteLine with ILogger throughout all services
+
+## Medium Priority (Functionality Gaps)
+- [ ] Add admin booking list endpoint
+- [ ] Add admin inventory item management endpoints
+- [ ] Add admin refund/manual refund trigger endpoint
+- [ ] Return DTO from GET /api/products/{id} instead of full entity
+- [ ] Remove commented-out code (OrdersController update endpoint, inventory HelloQueueConsumer)
+
+## Lower Priority (Polish / Maintenance)
+- [ ] Add test coverage for critical paths (JWT flow, booking logic, Stripe webhooks)
+- [ ] Tighten password strength requirements
+- [ ] Add TTL/cleanup job for StripeEvents deduplication table
+- [ ] Standardize OpenAPI/Swagger across all services
+- [ ] Write production deployment documentation
