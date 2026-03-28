@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { paymentsApi } from '../lib/paymentsApi'
 import { useQuery } from '@tanstack/react-query'
 
@@ -57,11 +58,21 @@ interface StripePaymentFormProps {
 }
 
 export function StripePaymentForm({ orderId, amount, onSuccess }: StripePaymentFormProps) {
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+
     const { data, isPending, isError } = useQuery({
         queryKey: ['payment-intent', orderId],
-        queryFn: () => paymentsApi.createIntent(orderId, amount),
+        queryFn: () => paymentsApi.createIntent(orderId, amount, turnstileToken!),
+        enabled: !!turnstileToken,
         staleTime: Infinity, // don't re-create the intent on refetch
     })
+
+    if (!turnstileToken) return (
+        <Turnstile
+            siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
+            onSuccess={(token) => setTurnstileToken(token)}
+        />
+    )
 
     if (isPending) return <p className="text-sm text-brown-light">Preparing payment…</p>
     if (isError) return <p className="text-sm text-red-600">Could not initialise payment. Please refresh and try again.</p>

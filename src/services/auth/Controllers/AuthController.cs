@@ -14,13 +14,16 @@ namespace auth.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager, IMessagePublisher publisher, IConfiguration configuration) : ControllerBase
+    public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager, IMessagePublisher publisher, IConfiguration configuration, TurnstileService turnstileService) : ControllerBase
     {
         private readonly string clientUrl = configuration["ClientUrl"] ?? "https://localhost:5173";
 
         [HttpPost("register")]
         public async Task<ActionResult<RegisterResponse>> Register(RegisterRequest req)
         {
+            if (!await turnstileService.VerifyAsync(req.TurnstileToken))
+                return BadRequest("CAPTCHA verification failed.");
+
             var user = new ApplicationUser
             {
                 UserName = req.Email,
@@ -153,6 +156,9 @@ namespace auth.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
         {
+            if (!await turnstileService.VerifyAsync(req.TurnstileToken))
+                return Ok(); // keep returning 200 — no enumeration
+
             var user = await userManager.FindByEmailAsync(req.Email);
             if (user is not null && user.EmailConfirmed)
             {

@@ -201,6 +201,7 @@ export interface CreateOrderRequest {
     total: number;
     depositTotal: number;
     items: CreateOrderItemRequest[];
+    turnstileToken: string;
 }
 
 export interface CreateOrderItemRequest {

@@ -16,6 +16,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string
   password: string
+  turnstileToken: string
 }
 
 export interface AuthResponse {
@@ -109,7 +110,7 @@ export const authApi = {
     return response.json()
   },
 
-  forgotPassword: async (data: { email: string }): Promise<void> => {
+  forgotPassword: async (data: { email: string; turnstileToken: string }): Promise<void> => {
     await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

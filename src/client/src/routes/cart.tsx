@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { useCart } from '../lib/useCart'
 import { ordersApi } from '../lib/ordersApi'
 import type { CreateOrderRequest } from '../lib/types'
@@ -28,6 +29,7 @@ function CartPage() {
         reservationDate: cartDate ?? '',
     })
     const [showDateChangeConfirm, setShowDateChangeConfirm] = useState(false)
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
     const orderMutation = useMutation({
         mutationFn: (dto: CreateOrderRequest) => ordersApi.createOrder(dto),
@@ -40,6 +42,8 @@ function CartPage() {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (items.length === 0) return
+
+        if (!turnstileToken) return
 
         const dto: CreateOrderRequest = {
             customerName: form.customerName,
@@ -63,6 +67,7 @@ function CartPage() {
                 depositAmount: (i.depositAmount ?? 0) * i.quantity,
                 rentalDate: form.reservationDate,
             })),
+            turnstileToken,
         }
 
         orderMutation.mutate(dto)
@@ -289,9 +294,15 @@ function CartPage() {
                                 )}
                             </Field>
 
+                            <Turnstile
+                                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
+                                onSuccess={(token) => setTurnstileToken(token)}
+                                onExpire={() => setTurnstileToken(null)}
+                            />
+
                             <button
                                 type="submit"
-                                disabled={orderMutation.isPending}
+                                disabled={orderMutation.isPending || !turnstileToken}
                                 className="w-full bg-brown hover:bg-brown-mid text-cream py-3.5 text-xs font-semibold tracking-[0.15em] uppercase disabled:opacity-50 transition-colors mt-2"
                             >
                                 {orderMutation.isPending ? 'Placing Order…' : 'Place Order'}

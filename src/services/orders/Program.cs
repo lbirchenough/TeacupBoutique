@@ -17,6 +17,7 @@ builder.Services.AddHostedService<BookingCancelledConsumer>();
 builder.Services.AddHostedService<BookingCompletedConsumer>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<IOrderEvent, OrderEventService>();
+builder.Services.AddHttpClient<TurnstileService>();
 
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<OrdersDbContext>(opt =>

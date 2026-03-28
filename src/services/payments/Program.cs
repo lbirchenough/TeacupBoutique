@@ -17,6 +17,7 @@ builder.Services.AddDbContext<PaymentsDbContext>(options =>
 StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
 
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddHttpClient<TurnstileService>();
 builder.Services.AddSingleton<IWebhookQueue, RabbitMqWebhookQueue>();
 builder.Services.AddHostedService<PaymentProcessorWorker>();
 
@@ -37,8 +38,11 @@ if (app.Environment.IsDevelopment())
 }
 
 // --- Create PaymentIntent ---
-app.MapPost("/payments/create-intent", async (CreatePaymentIntentRequest request) =>
+app.MapPost("/payments/create-intent", async (CreatePaymentIntentRequest request, TurnstileService turnstileService) =>
 {
+    if (!await turnstileService.VerifyAsync(request.TurnstileToken))
+        return Results.BadRequest("CAPTCHA verification failed.");
+
     if (request.OrderId == Guid.Empty || request.Amount <= 0)
         return Results.BadRequest("Invalid orderId or amount.");
 
@@ -106,4 +110,4 @@ app.MapPost("/webhooks/stripe", async (HttpContext ctx, PaymentsDbContext db, IW
 
 app.Run();
 
-record CreatePaymentIntentRequest(Guid OrderId, decimal Amount);
+record CreatePaymentIntentRequest(Guid OrderId, decimal Amount, string TurnstileToken);

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { authApi } from '../lib/api'
 
 export const Route = createFileRoute('/forgot-password')({
@@ -10,6 +11,7 @@ export const Route = createFileRoute('/forgot-password')({
 function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
   const mutation = useMutation({
     mutationFn: authApi.forgotPassword,
@@ -19,7 +21,7 @@ function ForgotPasswordPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) mutation.mutate({ email })
+    if (email && turnstileToken) mutation.mutate({ email, turnstileToken })
   }
 
   if (submitted) {
@@ -78,9 +80,17 @@ function ForgotPasswordPage() {
               />
             </div>
 
+            <div className="mb-6">
+              <Turnstile
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY_MANAGED}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+              />
+            </div>
+
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || !turnstileToken}
               className="w-full bg-brown hover:bg-brown-mid text-cream text-xs tracking-[0.2em] uppercase font-semibold py-3.5 transition-colors disabled:opacity-50"
             >
               {mutation.isPending ? 'Sending…' : 'Send Reset Link'}

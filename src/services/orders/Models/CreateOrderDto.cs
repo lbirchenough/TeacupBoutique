@@ -33,4 +33,6 @@ public class CreateOrderDto
 
     [Required, MinLength(1)]
     public required List<CreateOrderItemDto> Items { get; set; }
+
+    public string TurnstileToken { get; set; } = "";
 }
