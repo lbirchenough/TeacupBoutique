@@ -187,7 +187,7 @@ function CartPage() {
                                 </div>
                             )}
                             <div className="flex justify-between font-semibold text-brown text-base">
-                                <span>Total</span>
+                                <span>Hire total</span>
                                 <span>${grandTotal.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-brown-light text-xs">
@@ -203,6 +203,10 @@ function CartPage() {
                                     <span className="font-medium">${totalDeposit.toFixed(2)}</span>
                                 </div>
                             )}
+                            <div className="flex justify-between font-semibold text-brown text-base pt-3 border-t border-gold/20">
+                                <span>Total</span>
+                                <span>${(grandTotal + totalDeposit).toFixed(2)}</span>
+                            </div>
                         </div>
                     </div>
 

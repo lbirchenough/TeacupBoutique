@@ -43,8 +43,8 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         var taxRate = _configuration.GetValue<decimal>("TaxRate", 0.10m);
         var rentalTotal = payload.Items.Sum(i => i.UnitPrice * i.Quantity);
         var depositTotal = payload.Items.Sum(i => i.DepositAmount * i.Quantity);
-        var subtotal = Math.Round(rentalTotal / (1 + taxRate), 2);
-        var tax = Math.Round(rentalTotal - subtotal, 2);
+        var tax = Math.Round(rentalTotal * taxRate, 2);
+        var subtotal = Math.Round(rentalTotal - tax, 2);
         var total = rentalTotal + depositTotal;
 
         order.Subtotal = subtotal;
