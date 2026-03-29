@@ -304,3 +304,72 @@ VITE_STRIPE_PUBLISHABLE_KEY=
 ```
 
 In CI/production, set these as environment variables before running `npm run build`.
+
+---
+
+# Production Environment Strategy
+
+## V1 — Single VM (Docker Compose)
+
+The simplest viable deployment. Everything runs on one machine, exactly like local dev but on a cloud VM (EC2, Azure VM, DigitalOcean Droplet etc).
+
+All containers share the same Docker network so they reach each other by container name — same as local dev. RabbitMQ, SQL Server, and all services are just containers in the same Compose stack. No cloud-specific infrastructure knowledge required.
+
+**Rough cost:** ~$20–40/month for a VM with enough resources (2–4 vCPU, 4–8GB RAM).
+
+**Tradeoffs:**
+- If the VM goes down, everything goes down simultaneously
+- Scaling means resizing the VM, not adding instances
+- Completely fine for a boutique app with low, predictable traffic
+
+---
+
+## V2 — Azure Managed Services + Terraform
+
+Spread the app across proper Azure managed services. The V1 → V2 migration is a natural learning project — you have a working mental model of what the infrastructure needs to do (from V1), and V2 gives you a reason to learn Azure and Terraform properly.
+
+### Azure services map
+
+| Component | Azure Service | Notes |
+|---|---|---|
+| 4 services + gateway | Container Apps | Managed containers, scales to zero, built-in load balancing |
+| React SPA | Static Web Apps | Free tier, global CDN, built-in HTTPS |
+| SQL Server (per service) | Azure SQL | Managed SQL Server |
+| RabbitMQ | Azure Service Bus | Swap `IMessagePublisher` implementation. CloudAMQP is a zero-code-change alternative. |
+| Docker images | Container Registry | Stores built images |
+| Secrets | Key Vault | Connection strings, JWT secret, Stripe keys |
+| Monitoring | Application Insights | Replaces Console.WriteLines |
+
+### Traffic flow
+```
+Browser
+  ↓
+Static Web Apps (React SPA)
+  ↓ API calls
+Container Apps — Gateway (YARP)   ← only internet-facing entry point
+  ↓ internal routing
+Container Apps — Auth / Orders / Inventory / Payments
+  ↓                    ↓
+Azure SQL         Service Bus
+```
+
+### Why Container Apps scale-to-zero matters
+Container Apps can spin down idle services and spin them back up on demand. For a boutique app that's quiet overnight, this means you're not paying for compute when nobody's using the site. Services are already stateless so scale-out (multiple instances under load) also works without code changes.
+
+### Terraform
+Manages all interconnected Azure resources as code. Benefits:
+- Spin up a full staging environment with one command
+- Tear it down when not in use (cost saving)
+- Track infrastructure changes in git alongside app code
+- Reproducible — no clicking around the Azure portal
+
+**Rough cost:** ~$35–55/month, potentially less with scale-to-zero at low traffic.
+
+### Migration path V1 → V2
+1. Ship V1 on a single VM, validate the app works in production
+2. Set up Azure Container Registry, push images via GitHub Actions
+3. Write Terraform to provision Azure resources starting with a staging environment
+4. Migrate databases to Azure SQL
+5. Migrate messaging to Azure Service Bus (swap `IMessagePublisher` implementation)
+6. Deploy services to Container Apps, Static Web Apps for the frontend
+7. Cut over DNS, decommission the VM
