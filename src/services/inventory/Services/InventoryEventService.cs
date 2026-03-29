@@ -13,101 +13,93 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
 {
     public async Task CheckStockAndPublishEvent(OrderPlacedDto placedOrder)
     {
-        //Check stock
-        //Get product and inventory items, get a count of booking items on specific date, compare against total inventory count , if less then one is available.
-        //Repeat for each productId
-
         var productIds = placedOrder.Items.Select(i => i.ProductId).ToList();
-        var products = await _context.Products
-            .Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
+        bool allInStock = false;
+        StockReservedDto? stockReserved = null;
 
-        bool allInStock = true;
-
-        var bookingItems = new List<BookingItem>();
-
-        foreach (var item in placedOrder.Items)
+        using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
         {
-            var availableItems = await _context.InventoryItems
-            .Where(inv => inv.ProductId == item.ProductId 
-                && inv.Status == Status.Available
-                && !inv.BookingItems.Any(bi => 
-                    bi.ReservationDate == placedOrder.ReservationDate 
-                    && bi.Booking!.Status != BookingStatus.Cancelled))
-            .Take(item.Quantity)
-            .ToListAsync();
+            var products = await _context.Products
+                .Where(p => productIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
 
-            if (availableItems.Count < item.Quantity)
+            var bookingItems = new List<BookingItem>();
+            allInStock = true;
+
+            foreach (var item in placedOrder.Items)
             {
-                allInStock = false;
-                break;
+                var availableItems = await _context.InventoryItems
+                    .Where(inv => inv.ProductId == item.ProductId
+                        && inv.Status == Status.Available
+                        && !inv.BookingItems.Any(bi =>
+                            bi.ReservationDate == placedOrder.ReservationDate
+                            && bi.Booking!.Status != BookingStatus.Cancelled))
+                    .Take(item.Quantity)
+                    .ToListAsync();
+
+                if (availableItems.Count < item.Quantity)
+                {
+                    allInStock = false;
+                    break;
+                }
+
+                foreach (var inventoryItem in availableItems)
+                {
+                    bookingItems.Add(new BookingItem
+                    {
+                        ProductId = item.ProductId,
+                        InventoryItemId = inventoryItem.Id,
+                        ReservationDate = placedOrder.ReservationDate,
+                    });
+                }
             }
 
-
-            foreach (var inventoryItem in availableItems)
+            if (allInStock)
             {
-                bookingItems.Add(new BookingItem
+                var booking = new Booking
                 {
-                    ProductId = item.ProductId,
-                    InventoryItemId = inventoryItem.Id,
+                    Id = Guid.NewGuid(),
+                    OrderId = placedOrder.OrderId,
                     ReservationDate = placedOrder.ReservationDate,
-                });
+                    Status = BookingStatus.Reserved,
+                    ReservedAt = DateTime.UtcNow,
+                    BookingItems = bookingItems
+                };
+
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                stockReserved = new StockReservedDto
+                {
+                    OrderId = placedOrder.OrderId,
+                    Items = placedOrder.Items.Select(i => new StockReservedItemDto
+                    {
+                        ProductId = i.ProductId,
+                        Quantity = i.Quantity,
+                        UnitPrice = products[i.ProductId].Price,
+                        DepositAmount = products[i.ProductId].DepositAmount,
+                    }).ToList()
+                };
+            }
+            else
+            {
+                await transaction.RollbackAsync();
             }
         }
-        
-        
-        
-        // foreach (var item in placedOrder.Items)
-        // {
-        //     int totalProductStock = await _context.InventoryItems
-        //         .CountAsync(i => i.ProductId == item.ProductId && i.Status == Status.Available);
-
-            
-        //     int currentlyBookedCount = await _context.BookingItems
-        //         .Where(bi => bi.ProductId == item.ProductId && bi.ReservationDate == placedOrder.ReservationDate && bi.Booking.Status != BookingStatus.Cancelled)
-        //         .CountAsync();
-
-        //     allInStock = currentlyBookedCount + item.Quantity <= totalProductStock;
-        // }
-
-        if (allInStock)
+        catch (Exception ex)
         {
+            await transaction.RollbackAsync();
+            Console.WriteLine($" [inventory] Error reserving stock for order {placedOrder.OrderId}: {ex.Message}");
+            allInStock = false;
+        }
 
-            
-            
-            var booking = new Booking
-            {
-                Id = Guid.NewGuid(),
-                OrderId = placedOrder.OrderId,
-                ReservationDate = placedOrder.ReservationDate,
-                Status = BookingStatus.Reserved,
-                ReservedAt = DateTime.UtcNow,
-                BookingItems = bookingItems
-            };
-
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
-
-            var stockReserved = new StockReservedDto
-            {
-                OrderId = placedOrder.OrderId,
-                Items = placedOrder.Items.Select(i => new StockReservedItemDto
-                {
-                    ProductId = i.ProductId,
-                    Quantity = i.Quantity,
-                    UnitPrice = products[i.ProductId].Price,
-                    DepositAmount = products[i.ProductId].DepositAmount,
-                }).ToList()
-            };
+        // Publish events after transaction is committed/rolled back
+        if (allInStock && stockReserved is not null)
             await _publisher.PublishAsync("inventory.StockReserved", JsonSerializer.Serialize(stockReserved));
-
-        }
-
         else
-        {
-            // Publish out of stock event or handle accordingly
             await _publisher.PublishAsync("inventory.StockUnavailable", placedOrder.OrderId.ToString());
-        }
     }
 
     public async Task HandlePaymentSucceeded(Guid orderId)
