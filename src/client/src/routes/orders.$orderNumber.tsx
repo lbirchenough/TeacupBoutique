@@ -229,7 +229,6 @@ function OrderDetailPage() {
                         </p>
                         <StripePaymentForm
                             orderId={order.id}
-                            amount={order.total}
                             onSuccess={() => {/* polling will update the status automatically */}}
                         />
                     </div>

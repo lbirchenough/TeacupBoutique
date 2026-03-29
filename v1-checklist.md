@@ -2,7 +2,7 @@
 
 ## Critical (Security / Data Integrity)
 - [ ] Fix inventory race condition (atomic stock check + booking creation)
-- [ ] Add price validation on order submission against DB product prices
+- [x] Add price validation on order submission against DB product prices
 - [x] Fix CAPTCHA fail-open (TurnstileService should fail closed when Cloudflare unreachable)
 - [ ] Implement refund pathway for cancelled-after-payment orders
 

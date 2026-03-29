@@ -53,16 +53,15 @@ function PaymentForm({ onSuccess }: { onSuccess: () => void }) {
 // Outer component — fetches the clientSecret then mounts Elements
 interface StripePaymentFormProps {
     orderId: string
-    amount: number
     onSuccess: () => void
 }
 
-export function StripePaymentForm({ orderId, amount, onSuccess }: StripePaymentFormProps) {
+export function StripePaymentForm({ orderId, onSuccess }: StripePaymentFormProps) {
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
 
     const { data, isPending, isError } = useQuery({
         queryKey: ['payment-intent', orderId],
-        queryFn: () => paymentsApi.createIntent(orderId, amount, turnstileToken!),
+        queryFn: () => paymentsApi.createIntent(orderId, turnstileToken!),
         enabled: !!turnstileToken,
         staleTime: Infinity, // don't re-create the intent on refetch
     })

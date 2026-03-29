@@ -7,7 +7,7 @@ using orders.Models;
 
 namespace orders.Services;
 
-public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _context) : IOrderEvent
+public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _context, IConfiguration _configuration) : IOrderEvent
 {
     public async Task PublishOrder(Order order)
     {
@@ -17,7 +17,6 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
             OrderNumber = order.OrderNumber,
             CustomerName = order.CustomerName,
             CustomerEmail = order.CustomerEmail,
-            Total = order.Total,
             ReservationDate = order.PickupDate,
             PlacedAt = order.CreatedAt,
             Items = order.OrderItems?.Select(oi => new OrderPlacedItemDto
@@ -25,23 +24,53 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
                 ProductId = oi.ProductId,
                 Name = oi.Name,
                 Quantity = oi.Quantity,
-                ClaimedPricePerDay = oi.UnitPrice
             }).ToList() ?? []
         };
 
         await _publisher.PublishAsync("orders.OrderPlaced", JsonSerializer.Serialize(dto));
     }
 
-    public async Task HandleStockReserved(string orderId)
+    public async Task HandleStockReserved(string message)
     {
-        var id = Guid.Parse(orderId);
-        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
+        var payload = JsonSerializer.Deserialize<StockReservedDto>(message);
+        if (payload is null) return;
 
-        if (order is null) { Console.WriteLine($" [orders] Order {orderId} not found"); return; }
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+            .FirstOrDefaultAsync(o => o.Id == payload.OrderId);
+        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found"); return; }
 
+        var taxRate = _configuration.GetValue<decimal>("TaxRate", 0.10m);
+        var rentalTotal = payload.Items.Sum(i => i.UnitPrice * i.Quantity);
+        var depositTotal = payload.Items.Sum(i => i.DepositAmount * i.Quantity);
+        var subtotal = Math.Round(rentalTotal / (1 + taxRate), 2);
+        var tax = Math.Round(rentalTotal - subtotal, 2);
+        var total = rentalTotal + depositTotal;
+
+        order.Subtotal = subtotal;
+        order.Tax = tax;
+        order.Total = total;
+        order.DepositTotal = depositTotal;
         order.Status = OrderStatus.AwaitingPayment;
+
+        if (order.OrderItems != null)
+        {
+            foreach (var item in order.OrderItems)
+            {
+                var priceItem = payload.Items.FirstOrDefault(i => i.ProductId == item.ProductId);
+                if (priceItem is not null)
+                {
+                    item.UnitPrice = priceItem.UnitPrice;
+                    item.Total = priceItem.UnitPrice * item.Quantity;
+                    item.DepositAmount = priceItem.DepositAmount * item.Quantity;
+                }
+            }
+        }
+
         await _context.SaveChangesAsync();
-        Console.WriteLine($" [orders] Order {orderId} status → AwaitingPayment");
+        Console.WriteLine($" [orders] Order {payload.OrderId} prices stamped, status → AwaitingPayment");
+
+        await _publisher.PublishAsync("orders.ReadyForPayment", JsonSerializer.Serialize(new ReadyForPaymentDto(payload.OrderId, total)));
     }
 
     public async Task HandleStockUnavailable(string orderId)

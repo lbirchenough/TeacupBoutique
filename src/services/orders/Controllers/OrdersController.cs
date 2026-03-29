@@ -25,16 +25,9 @@ namespace orders.Controllers
                 CustomerName = dto.CustomerName,
                 CustomerEmail = dto.CustomerEmail,
                 CustomerPhone = dto.CustomerPhone,
-                Subtotal = dto.Subtotal,
-                Tax = dto.Tax,
-                Total = dto.Total,
-                DepositTotal = dto.DepositTotal,
                 PickupDate = dto.PickupDate,
                 ReturnDate = dto.ReturnDate,
                 ReservationDate = dto.ReservationDate,
-                // EventType = dto.EventType,
-                // GuestCount = dto.GuestCount,
-                // SpecialRequests = dto.SpecialRequests,
                 OrderItems = dto.Items.Select(i => new OrderItem
                 {
                     ProductId = i.ProductId,
@@ -43,9 +36,6 @@ namespace orders.Controllers
                     Name = i.ProductName,
                     Colour = i.ProductThemeColor,
                     ImageUrl = i.ProductImageUrl,
-                    UnitPrice = i.PricePerDay,
-                    Total = i.Subtotal,
-                    DepositAmount = i.DepositAmount
                 }).ToList()
             };
 

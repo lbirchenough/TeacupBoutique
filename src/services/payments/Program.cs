@@ -20,6 +20,7 @@ builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddHttpClient<TurnstileService>();
 builder.Services.AddSingleton<IWebhookQueue, RabbitMqWebhookQueue>();
 builder.Services.AddHostedService<PaymentProcessorWorker>();
+builder.Services.AddHostedService<ReadyForPaymentConsumer>();
 
 
 var app = builder.Build();
@@ -38,18 +39,22 @@ if (app.Environment.IsDevelopment())
 }
 
 // --- Create PaymentIntent ---
-app.MapPost("/payments/create-intent", async (CreatePaymentIntentRequest request, TurnstileService turnstileService) =>
+app.MapPost("/payments/create-intent", async (CreatePaymentIntentRequest request, TurnstileService turnstileService, PaymentsDbContext db) =>
 {
     if (!await turnstileService.VerifyAsync(request.TurnstileToken))
         return Results.BadRequest("CAPTCHA verification failed.");
 
-    if (request.OrderId == Guid.Empty || request.Amount <= 0)
-        return Results.BadRequest("Invalid orderId or amount.");
+    if (request.OrderId == Guid.Empty)
+        return Results.BadRequest("Invalid orderId.");
+
+    var pending = await db.PendingPaymentAmounts.FindAsync(request.OrderId);
+    if (pending is null)
+        return Results.NotFound("Order is not ready for payment yet.");
 
     var service = new PaymentIntentService();
     var options = new PaymentIntentCreateOptions
     {
-        Amount = (long)(request.Amount * 100), // dollars → cents
+        Amount = (long)(pending.Amount * 100), // dollars → cents
         Currency = "aud",
         PaymentMethodTypes = ["card"],
         Metadata = new Dictionary<string, string>
@@ -110,4 +115,4 @@ app.MapPost("/webhooks/stripe", async (HttpContext ctx, PaymentsDbContext db, IW
 
 app.Run();
 
-record CreatePaymentIntentRequest(Guid OrderId, decimal Amount, string TurnstileToken);
+record CreatePaymentIntentRequest(Guid OrderId, string TurnstileToken);
