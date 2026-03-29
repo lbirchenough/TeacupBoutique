@@ -3,7 +3,7 @@ using System.Text.Json;
 using inventory.Data;
 using inventory.Entities;
 using inventory.Interfaces;
-using Microsoft.Build.Framework;
+using inventory.Models;
 using Microsoft.EntityFrameworkCore;
 using orders.Models;
 
@@ -17,7 +17,10 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
         //Get product and inventory items, get a count of booking items on specific date, compare against total inventory count , if less then one is available.
         //Repeat for each productId
 
-        //TODO - price validation logic
+        var productIds = placedOrder.Items.Select(i => i.ProductId).ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id);
 
         bool allInStock = true;
 
@@ -84,9 +87,19 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
 
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
-            
-            //var json = JsonSerializer.Serialize(placedOrder.OrderId);
-            await _publisher.PublishAsync("inventory.StockReserved", placedOrder.OrderId.ToString());
+
+            var stockReserved = new StockReservedDto
+            {
+                OrderId = placedOrder.OrderId,
+                Items = placedOrder.Items.Select(i => new StockReservedItemDto
+                {
+                    ProductId = i.ProductId,
+                    Quantity = i.Quantity,
+                    UnitPrice = products[i.ProductId].Price,
+                    DepositAmount = products[i.ProductId].DepositAmount,
+                }).ToList()
+            };
+            await _publisher.PublishAsync("inventory.StockReserved", JsonSerializer.Serialize(stockReserved));
 
         }
 

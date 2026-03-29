@@ -52,19 +52,12 @@ function CartPage() {
             reservationDate: form.reservationDate,
             pickupDate: form.reservationDate,
             returnDate: form.reservationDate,
-            subtotal: exGst,
-            tax: gst,
-            total: grandTotal + totalDeposit,
-            depositTotal: totalDeposit,
             items: items.map(i => ({
                 productId: i.productId,
                 quantity: i.quantity,
                 productName: i.name,
                 productThemeColor: i.colour ?? undefined,
                 productImageUrl: i.imageUrl ?? undefined,
-                pricePerDay: i.pricePerDay,
-                subtotal: i.pricePerDay * i.quantity,
-                depositAmount: (i.depositAmount ?? 0) * i.quantity,
                 rentalDate: form.reservationDate,
             })),
             turnstileToken,
@@ -194,7 +187,7 @@ function CartPage() {
                                 </div>
                             )}
                             <div className="flex justify-between font-semibold text-brown text-base">
-                                <span>Total</span>
+                                <span>Hire total</span>
                                 <span>${grandTotal.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-brown-light text-xs">
@@ -210,6 +203,10 @@ function CartPage() {
                                     <span className="font-medium">${totalDeposit.toFixed(2)}</span>
                                 </div>
                             )}
+                            <div className="flex justify-between font-semibold text-brown text-base pt-3 border-t border-gold/20">
+                                <span>Total</span>
+                                <span>${(grandTotal + totalDeposit).toFixed(2)}</span>
+                            </div>
                         </div>
                     </div>
 

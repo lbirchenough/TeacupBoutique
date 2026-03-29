@@ -12,5 +12,4 @@ public class OrderPlacedItemDto
 {
     public Guid ProductId { get; set; }
     public int Quantity { get; set; }
-    public decimal ClaimedPricePerDay { get; set; }
 }

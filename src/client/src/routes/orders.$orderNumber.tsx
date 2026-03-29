@@ -125,57 +125,56 @@ function OrderDetailPage() {
                     </div>
                 </div>
 
-                {/* Order items */}
-                <div className="bg-white border border-gold/20 p-6">
-                    <h2 className="font-serif text-lg text-brown mb-5">Items</h2>
-                    <div className="space-y-4">
-                        {order.orderItems?.map(item => (
-                            <div key={item.id} className="flex gap-4 items-center">
-                                <div className="w-14 h-14 bg-cream-dark overflow-hidden shrink-0 flex items-center justify-center">
-                                    {item.imageUrl ? (
-                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="font-script text-sm text-brown-light">—</span>
-                                    )}
+                {/* Order items — hidden while stock is still being verified */}
+                {order.status !== 'Pending' && (
+                    <div className="bg-white border border-gold/20 p-6">
+                        <h2 className="font-serif text-lg text-brown mb-5">Items</h2>
+                        <div className="space-y-4">
+                            {order.orderItems?.map(item => (
+                                <div key={item.id} className="flex gap-4 items-center">
+                                    <div className="w-14 h-14 bg-cream-dark overflow-hidden shrink-0 flex items-center justify-center">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="font-script text-sm text-brown-light">—</span>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-serif text-brown truncate">{item.name}</p>
+                                        {item.colour && <p className="text-xs text-brown-light tracking-wide">{item.colour}</p>}
+                                        <p className="text-xs text-brown-mid mt-0.5">Qty {item.quantity} × ${item.unitPrice.toFixed(2)}/day</p>
+                                        {item.depositAmount > 0 && (
+                                            <p className="text-xs text-brown-light mt-0.5">+${item.depositAmount.toFixed(2)} deposit</p>
+                                        )}
+                                    </div>
+                                    <p className="font-semibold text-brown shrink-0">${item.total.toFixed(2)}</p>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-serif text-brown truncate">{item.name}</p>
-                                    {item.colour && <p className="text-xs text-brown-light tracking-wide">{item.colour}</p>}
-                                    <p className="text-xs text-brown-mid mt-0.5">Qty {item.quantity} × ${item.unitPrice.toFixed(2)}/day</p>
-                                    {item.depositAmount > 0 && (
-                                        <p className="text-xs text-brown-light mt-0.5">+${item.depositAmount.toFixed(2)} deposit</p>
-                                    )}
-                                </div>
-                                <p className="font-semibold text-brown shrink-0">${item.total.toFixed(2)}</p>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
 
-                    {/* Totals */}
-                    <div className="border-t border-gold/20 mt-5 pt-5 space-y-2 text-sm">
-                        <div className="flex justify-between text-brown-mid">
-                            <span>Subtotal (ex GST)</span><span>${order.subtotal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-brown-light text-xs">
-                            <span>GST (10%)</span><span>${order.tax.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-brown pt-2 border-t border-gold/20 font-medium">
-                            <span>Hire total</span><span>${(order.total - order.depositTotal).toFixed(2)}</span>
-                        </div>
-                        {order.depositTotal > 0 && (
-                            <div className="flex justify-between text-brown-mid">
-                                <div>
-                                    <span>Security deposit</span>
-                                    <p className="text-xs text-brown-light mt-0.5">Refundable subject to item condition</p>
-                                </div>
-                                <span>${order.depositTotal.toFixed(2)}</span>
+                        {/* Totals */}
+                        <div className="border-t border-gold/20 mt-5 pt-5 space-y-2 text-sm">
+                            <div className="flex justify-between font-semibold text-brown text-base">
+                                <span>Hire total</span><span>${(order.total - order.depositTotal).toFixed(2)}</span>
                             </div>
-                        )}
-                        <div className="flex justify-between font-semibold text-brown text-base pt-2 border-t border-gold/20">
-                            <span>Total due</span><span>${order.total.toFixed(2)}</span>
+                            <div className="flex justify-between text-brown-light text-xs">
+                                <span>GST included (10%)</span><span>${order.tax.toFixed(2)}</span>
+                            </div>
+                            {order.depositTotal > 0 && (
+                                <div className="flex justify-between text-brown-mid pt-2 border-t border-gold/20">
+                                    <div>
+                                        <span>Security deposit</span>
+                                        <p className="text-xs text-brown-light mt-0.5">Refundable subject to item condition</p>
+                                    </div>
+                                    <span>${order.depositTotal.toFixed(2)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between font-semibold text-brown text-base pt-2 border-t border-gold/20">
+                                <span>Total</span><span>${order.total.toFixed(2)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Return Summary — shown when completed with data */}
                 {order.status === 'Completed' && (order.completionNotes || order.depositAmountKept != null || (order.returnPhotoUrls?.length ?? 0) > 0) && (
@@ -229,7 +228,6 @@ function OrderDetailPage() {
                         </p>
                         <StripePaymentForm
                             orderId={order.id}
-                            amount={order.total}
                             onSuccess={() => {/* polling will update the status automatically */}}
                         />
                     </div>

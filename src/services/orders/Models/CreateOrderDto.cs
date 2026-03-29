@@ -15,11 +15,6 @@ public class CreateOrderDto
     [Required, MaxLength(50)]
     public required string CustomerPhone { get; set; }
 
-    public decimal Subtotal { get; set; }
-    public decimal Tax { get; set; }
-    public decimal Total { get; set; }
-    public decimal DepositTotal { get; set; }
-
     public DateOnly PickupDate { get; set; }
     public DateOnly ReturnDate { get; set; }
 

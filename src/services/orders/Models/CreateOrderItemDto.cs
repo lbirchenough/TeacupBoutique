@@ -17,7 +17,5 @@ public class CreateOrderItemDto
     [MaxLength(500)]
     public string? ProductImageUrl { get; set; }
 
-    public decimal PricePerDay { get; set; }
-    public decimal Subtotal { get; set; }
-    public decimal DepositAmount { get; set; }
+
 }

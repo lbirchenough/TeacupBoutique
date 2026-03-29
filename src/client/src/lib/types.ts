@@ -196,10 +196,6 @@ export interface CreateOrderRequest {
     reservationDate: string;
     pickupDate: string;
     returnDate: string;
-    subtotal: number;
-    tax: number;
-    total: number;
-    depositTotal: number;
     items: CreateOrderItemRequest[];
     turnstileToken: string;
 }
@@ -210,8 +206,5 @@ export interface CreateOrderItemRequest {
     productName: string;
     productThemeColor?: string;
     productImageUrl?: string;
-    pricePerDay: number;
-    subtotal: number;
-    depositAmount: number;
     rentalDate: string;
 }

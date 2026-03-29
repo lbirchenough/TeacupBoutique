@@ -7,6 +7,7 @@ public class PaymentsDbContext(DbContextOptions<PaymentsDbContext> options) : Db
 {
     public DbSet<StripeEventRecord> StripeEvents { get; set; }
     public DbSet<Payment> Payments { get; set; }
+    public DbSet<PendingPaymentAmount> PendingPaymentAmounts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -14,6 +15,13 @@ public class PaymentsDbContext(DbContextOptions<PaymentsDbContext> options) : Db
             .HasKey(e => e.StripeEventId);
 
         modelBuilder.Entity<Payment>()
+            .Property(p => p.Amount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<PendingPaymentAmount>()
+            .HasKey(p => p.OrderId);
+
+        modelBuilder.Entity<PendingPaymentAmount>()
             .Property(p => p.Amount)
             .HasPrecision(18, 2);
     }
