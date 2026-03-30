@@ -1,3 +1,4 @@
+using Messaging.Workers;
 using System.Text.Json;
 using inventory.Services;
 
@@ -6,10 +7,10 @@ namespace inventory.Workers;
 public class OrderCancelledConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     : RabbitMqConsumerBase(configuration)
 {
-    protected override string QueueName => "inventory.order-cancelled";
-    protected override string RoutingKey => "orders.OrderCancelled";
+    public override string QueueName => "inventory.order-cancelled";
+    public override string RoutingKey => "orders.OrderCancelled";
 
-    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         Console.WriteLine($" [inventory] OrderCancelled received: {message}");
 

@@ -13,6 +13,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["src/services/orders/orders.csproj", "src/services/orders/"]
+COPY ["src/shared/Messaging/Messaging.csproj", "src/shared/Messaging/"]
 RUN dotnet restore "./src/services/orders/orders.csproj"
 COPY . .
 WORKDIR "/src/src/services/orders"

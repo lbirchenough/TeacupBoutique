@@ -2,7 +2,7 @@ using System;
 using System.Text.Json;
 using inventory.Data;
 using inventory.Entities;
-using inventory.Interfaces;
+using Messaging.Interfaces;
 using inventory.Models;
 using Microsoft.EntityFrameworkCore;
 using orders.Models;

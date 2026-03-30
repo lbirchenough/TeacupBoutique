@@ -1,3 +1,4 @@
+using Messaging.Workers;
 using System.Text.Json;
 using payments.Data;
 using payments.Entities;
@@ -6,10 +7,10 @@ namespace payments.Workers;
 
 public class ReadyForPaymentConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory) : RabbitMqConsumerBase(configuration)
 {
-    protected override string QueueName => "payments.ready-for-payment";
-    protected override string RoutingKey => "orders.ReadyForPayment";
+    public override string QueueName => "payments.ready-for-payment";
+    public override string RoutingKey => "orders.ReadyForPayment";
 
-    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         var payload = JsonSerializer.Deserialize<ReadyForPaymentDto>(message);
         if (payload is null) return;

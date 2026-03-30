@@ -1,8 +1,9 @@
 using System.Text;
 using auth.Data;
-using auth.Interfaces;
 using auth.Models;
 using auth.Services;
+using Messaging.Interfaces;
+using Messaging.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;

@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using payments.Data;
-using payments.Interfaces;
 using payments.Entities;
 using payments.Services;
+using Messaging.Interfaces;
+using Messaging.Services;
 using payments.Workers;
 using Stripe;
 

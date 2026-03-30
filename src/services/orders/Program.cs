@@ -3,6 +3,8 @@ using orders.Data;
 using orders.Interfaces;
 using orders.Services;
 using orders.Workers;
+using Messaging.Interfaces;
+using Messaging.Services;
 
 
 

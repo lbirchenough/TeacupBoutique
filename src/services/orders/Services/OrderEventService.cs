@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using orders.Data;
 using orders.Entities;
 using orders.Interfaces;
+using Messaging.Interfaces;
 using orders.Models;
 
 namespace orders.Services;

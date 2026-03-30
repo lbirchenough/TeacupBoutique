@@ -1,13 +1,14 @@
+using Messaging.Workers;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
 public class BookingCompletedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory) : RabbitMqConsumerBase(configuration)
 {
-    protected override string QueueName => "orders.booking-completed";
-    protected override string RoutingKey => "inventory.BookingCompleted";
+    public override string QueueName => "orders.booking-completed";
+    public override string RoutingKey => "inventory.BookingCompleted";
 
-    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         Console.WriteLine($" [orders] BookingCompleted received: {message}");
 

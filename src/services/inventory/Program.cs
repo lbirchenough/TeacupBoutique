@@ -1,7 +1,8 @@
 using inventory.Data;
-using inventory.Interfaces;
 using inventory.Services;
 using inventory.Workers;
+using Messaging.Interfaces;
+using Messaging.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 

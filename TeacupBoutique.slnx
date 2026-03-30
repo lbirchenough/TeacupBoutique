@@ -9,6 +9,9 @@
     <Project Path="src/services/orders/orders.csproj" />
     <Project Path="src/services/payments/payments.csproj" />
   </Folder>
+  <Folder Name="/src/shared/">
+    <Project Path="src/shared/Messaging/Messaging.csproj" />
+  </Folder>
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>

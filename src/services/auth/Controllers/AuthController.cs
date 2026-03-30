@@ -1,6 +1,6 @@
 using System.Text.Json;
 using auth.DTO;
-using auth.Interfaces;
+using Messaging.Interfaces;
 using auth.Models;
 using auth.Services;
 using Microsoft.AspNetCore.Authorization;

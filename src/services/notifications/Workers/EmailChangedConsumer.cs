@@ -1,3 +1,4 @@
+using Messaging.Workers;
 using System.Text.Json;
 using notifications.Interfaces;
 using notifications.Models;
@@ -7,10 +8,10 @@ namespace notifications.Workers;
 public class EmailChangedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     : RabbitMqConsumerBase(configuration)
 {
-    protected override string QueueName => "notifications.email-changed";
-    protected override string RoutingKey => "auth.EmailChanged";
+    public override string QueueName => "notifications.email-changed";
+    public override string RoutingKey => "auth.EmailChanged";
 
-    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         Console.WriteLine($" [notifications] EmailChanged received: {message}");
 
