@@ -1,3 +1,4 @@
+using Messaging.Workers;
 using System.Text.Json;
 using notifications.Interfaces;
 using notifications.Models;
@@ -7,10 +8,10 @@ namespace notifications.Workers;
 public class OrderCancelledConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
     : RabbitMqConsumerBase(configuration)
 {
-    protected override string QueueName => "notifications.order-cancelled";
-    protected override string RoutingKey => "orders.OrderCancelled";
+    public override string QueueName => "notifications.order-cancelled";
+    public override string RoutingKey => "orders.OrderCancelled";
 
-    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         Console.WriteLine($" [notifications] OrderCancelled received: {message}");
 

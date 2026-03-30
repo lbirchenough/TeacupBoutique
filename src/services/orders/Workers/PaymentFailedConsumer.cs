@@ -1,13 +1,14 @@
+using Messaging.Workers;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
 public class PaymentFailedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory) : RabbitMqConsumerBase(configuration)
 {
-    protected override string QueueName => "orders.payment-failed";
-    protected override string RoutingKey => "payments.PaymentFailed";
+    public override string QueueName => "orders.payment-failed";
+    public override string RoutingKey => "payments.PaymentFailed";
 
-    protected override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         Console.WriteLine($" [orders] PaymentFailed received: {message}");
 

@@ -1,18 +1,21 @@
 using System.Text;
+using Messaging.Interfaces;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
-namespace inventory.Workers;
+namespace Messaging.Workers;
 
-public abstract class RabbitMqConsumerBase : BackgroundService
+public abstract class RabbitMqConsumerBase : BackgroundService, IMessageConsumer
 {
     private readonly IConfiguration _configuration;
     private IConnection? _connection;
     private IChannel? _channel;
 
-    protected abstract string QueueName { get; }
-    protected abstract string RoutingKey { get; }
-    protected abstract Task HandleMessageAsync(string message, CancellationToken ct);
+    public abstract string QueueName { get; }
+    public abstract string RoutingKey { get; }
+    public abstract Task HandleMessageAsync(string message, CancellationToken ct);
 
     protected RabbitMqConsumerBase(IConfiguration configuration)
     {
@@ -22,8 +25,23 @@ public abstract class RabbitMqConsumerBase : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var factory = new ConnectionFactory { HostName = _configuration["RabbitMq:Host"] ?? "localhost" };
-        _connection = await factory.CreateConnectionAsync(stoppingToken);
-        _channel = await _connection.CreateChannelAsync();
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                _connection = await factory.CreateConnectionAsync(stoppingToken);
+                break;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($" [{GetType().Name}] RabbitMQ not ready, retrying in 5s... ({ex.Message})");
+                await Task.Delay(5000, stoppingToken);
+            }
+        }
+        if (stoppingToken.IsCancellationRequested) return;
+
+        _channel = await _connection!.CreateChannelAsync();
         await _channel.ExchangeDeclareAsync("commerce.events", ExchangeType.Topic);
 
         await _channel.QueueDeclareAsync(queue: QueueName, durable: true, exclusive: false, autoDelete: false);
@@ -38,7 +56,7 @@ public abstract class RabbitMqConsumerBase : BackgroundService
         };
 
         await _channel.BasicConsumeAsync(QueueName, autoAck: false, consumer: consumer);
-        Console.WriteLine($" [inventory] Listening on routing key '{RoutingKey}'");
+        Console.WriteLine($" [{GetType().Name}] Listening on routing key '{RoutingKey}'");
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 

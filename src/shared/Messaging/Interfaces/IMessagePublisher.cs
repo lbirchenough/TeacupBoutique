@@ -1,6 +1,4 @@
-using System;
-
-namespace inventory.Interfaces;
+namespace Messaging.Interfaces;
 
 public interface IMessagePublisher
 {

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using inventory.Data;
 using inventory.Entities;
-using inventory.Interfaces;
+using Messaging.Interfaces;
 using inventory.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

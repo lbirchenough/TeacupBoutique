@@ -2,7 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using payments.Data;
-using payments.Interfaces;
+using Messaging.Interfaces;
 using payments.Entities;
 using payments.Services;
 using RabbitMQ.Client;
