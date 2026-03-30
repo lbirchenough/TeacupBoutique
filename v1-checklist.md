@@ -10,7 +10,7 @@
 - [x] Make CORS configurable per environment
 - [x] Move JWT/refresh token expiry to config
 - [x] Remove WeatherForecast template controller from auth service
-- [ ] Add production migration strategy (replace auto-migrate on startup)
+- [ ] Add production migration strategy — add a migration step to the GitHub Actions deploy pipeline that runs `dotnet ef database update` via a short-lived container for each service before deploying updated service images. Auto-migrate on startup stays in place for local dev. This is implemented as part of setting up the VM and CI/CD pipeline, not before.
 - [ ] Replace Console.WriteLine with ILogger throughout all services
 
 ## Medium Priority (Functionality Gaps)
