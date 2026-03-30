@@ -5,7 +5,8 @@ using payments.Entities;
 
 namespace payments.Workers;
 
-public class ReadyForPaymentConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory) : RabbitMqConsumerBase(configuration)
+public class ReadyForPaymentConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    : RabbitMqConsumerBase(configuration, loggerFactory)
 {
     public override string QueueName => "payments.ready-for-payment";
     public override string RoutingKey => "orders.ReadyForPayment";
@@ -27,7 +28,7 @@ public class ReadyForPaymentConsumer(IConfiguration configuration, IServiceScope
             Amount = payload.Amount,
         });
         await db.SaveChangesAsync();
-        Console.WriteLine($" [payments] Stored pending amount {payload.Amount} for order {payload.OrderId}");
+        _logger.LogDebug("Stored pending amount {Amount} for order {OrderId}", payload.Amount, payload.OrderId);
     }
 }
 

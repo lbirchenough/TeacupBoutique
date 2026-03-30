@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using payments.Data;
 using Messaging.Interfaces;
 using payments.Entities;
@@ -14,7 +15,8 @@ namespace payments.Workers;
 public class PaymentProcessorWorker(
     IConfiguration config,
     IServiceScopeFactory scopeFactory,
-    IMessagePublisher publisher) : BackgroundService
+    IMessagePublisher publisher,
+    ILogger<PaymentProcessorWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -50,7 +52,7 @@ public class PaymentProcessorWorker(
 
                     if (!Guid.TryParse(orderIdStr, out var orderId))
                     {
-                        Console.WriteLine($" [payments] WARNING: No valid orderId in PaymentIntent metadata for event {stripeEvent.Id}");
+                        logger.LogWarning("No valid orderId in PaymentIntent metadata for event {EventId}", stripeEvent.Id);
                         await channel.BasicAckAsync(ea.DeliveryTag, false);
                         return;
                     }
@@ -82,18 +84,18 @@ public class PaymentProcessorWorker(
                     var payload = JsonSerializer.Serialize(new { OrderId = orderId, StripePaymentIntentId = paymentIntent.Id });
                     await publisher.PublishAsync(routingKey, payload);
 
-                    Console.WriteLine($" [payments] Processed {stripeEvent.Type} for order {orderId} → {routingKey}");
+                    logger.LogInformation("Processed {EventType} for order {OrderId} → {RoutingKey}", stripeEvent.Type, orderId, routingKey);
                 }
                 else
                 {
-                    Console.WriteLine($" [payments] Skipping unhandled event type: {stripeEvent.Type}");
+                    logger.LogDebug("Skipping unhandled event type: {EventType}", stripeEvent.Type);
                 }
 
                 await channel.BasicAckAsync(ea.DeliveryTag, false);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($" [payments] ERROR processing webhook: {ex.Message}");
+                logger.LogError(ex, "Error processing webhook");
                 await channel.BasicNackAsync(ea.DeliveryTag, false, requeue: false);
             }
         };

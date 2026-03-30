@@ -11,14 +11,14 @@
 - [x] Move JWT/refresh token expiry to config
 - [x] Remove WeatherForecast template controller from auth service
 - [ ] Add production migration strategy — add a migration step to the GitHub Actions deploy pipeline that runs `dotnet ef database update` via a short-lived container for each service before deploying updated service images. Auto-migrate on startup stays in place for local dev. This is implemented as part of setting up the VM and CI/CD pipeline, not before.
-- [ ] Replace Console.WriteLine with ILogger throughout all services
+- [x] Replace Console.WriteLine with ILogger throughout all services
 
 ## Medium Priority (Functionality Gaps)
 - [ ] Add admin booking list endpoint
 - [ ] Add admin inventory item management endpoints
 - [ ] Add admin refund/manual refund trigger endpoint
 - [ ] Return DTO from GET /api/products/{id} instead of full entity
-- [ ] Remove commented-out code (OrdersController update endpoint, inventory HelloQueueConsumer)
+- [ ] Remove commented-out code (OrdersController update endpoint)
 
 ## Lower Priority (Polish / Maintenance)
 - [ ] Add test coverage for critical paths (JWT flow, booking logic, Stripe webhooks)

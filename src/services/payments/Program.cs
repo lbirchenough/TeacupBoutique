@@ -71,7 +71,7 @@ app.MapPost("/payments/create-intent", async (CreatePaymentIntentRequest request
 
 
 // --- Stripe webhook ---
-app.MapPost("/webhooks/stripe", async (HttpContext ctx, PaymentsDbContext db, IWebhookQueue queue) =>
+app.MapPost("/webhooks/stripe", async (HttpContext ctx, PaymentsDbContext db, IWebhookQueue queue, ILogger<Program> logger) =>
 {
     string json;
     using (var reader = new StreamReader(ctx.Request.Body))
@@ -89,14 +89,14 @@ app.MapPost("/webhooks/stripe", async (HttpContext ctx, PaymentsDbContext db, IW
     }
     catch (StripeException ex)
     {
-        Console.WriteLine($" [payments] Webhook signature invalid: {ex.Message}");
+        logger.LogWarning("Webhook signature invalid: {Message}", ex.Message);
         return Results.BadRequest("Invalid signature");
     }
 
     // Dedup — if we've seen this event before, ack and move on
     if (await db.StripeEvents.AnyAsync(e => e.StripeEventId == stripeEvent.Id))
     {
-        Console.WriteLine($" [payments] Duplicate event {stripeEvent.Id}, skipping");
+        logger.LogInformation("Duplicate event {EventId}, skipping", stripeEvent.Id);
         return Results.Ok();
     }
 

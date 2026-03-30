@@ -2,6 +2,7 @@ using System.Text;
 using Messaging.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -10,6 +11,7 @@ namespace Messaging.Workers;
 public abstract class RabbitMqConsumerBase : BackgroundService, IMessageConsumer
 {
     private readonly IConfiguration _configuration;
+    protected readonly ILogger _logger;
     private IConnection? _connection;
     private IChannel? _channel;
 
@@ -17,9 +19,10 @@ public abstract class RabbitMqConsumerBase : BackgroundService, IMessageConsumer
     public abstract string RoutingKey { get; }
     public abstract Task HandleMessageAsync(string message, CancellationToken ct);
 
-    protected RabbitMqConsumerBase(IConfiguration configuration)
+    protected RabbitMqConsumerBase(IConfiguration configuration, ILoggerFactory loggerFactory)
     {
         _configuration = configuration;
+        _logger = loggerFactory.CreateLogger(GetType());
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -35,7 +38,7 @@ public abstract class RabbitMqConsumerBase : BackgroundService, IMessageConsumer
             }
             catch (Exception ex)
             {
-                Console.WriteLine($" [{GetType().Name}] RabbitMQ not ready, retrying in 5s... ({ex.Message})");
+                _logger.LogWarning("RabbitMQ not ready, retrying in 5s... ({Message})", ex.Message);
                 await Task.Delay(5000, stoppingToken);
             }
         }
@@ -56,7 +59,7 @@ public abstract class RabbitMqConsumerBase : BackgroundService, IMessageConsumer
         };
 
         await _channel.BasicConsumeAsync(QueueName, autoAck: false, consumer: consumer);
-        Console.WriteLine($" [{GetType().Name}] Listening on routing key '{RoutingKey}'");
+        _logger.LogInformation("Listening on routing key '{RoutingKey}'", RoutingKey);
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 

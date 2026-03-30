@@ -5,15 +5,15 @@ using notifications.Models;
 
 namespace notifications.Workers;
 
-public class OrderCompletedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
-    : RabbitMqConsumerBase(configuration)
+public class OrderCompletedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    : RabbitMqConsumerBase(configuration, loggerFactory)
 {
     public override string QueueName => "notifications.order-completed";
     public override string RoutingKey => "orders.OrderCompleted";
 
     public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        Console.WriteLine($" [notifications] OrderCompleted received: {message}");
+        _logger.LogDebug("OrderCompleted received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<OrderCompletedEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;

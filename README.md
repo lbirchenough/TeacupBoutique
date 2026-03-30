@@ -399,7 +399,25 @@ Spread the app across proper Azure managed services. The V1 → V2 migration is 
 | RabbitMQ | Azure Service Bus | Swap `IMessagePublisher` implementation |
 | Docker images | Container Registry | Stores built images |
 | Secrets | Key Vault | Connection strings, JWT secret, Stripe keys |
-| Monitoring | Application Insights | Replaces Console.WriteLines |
+| Monitoring | Application Insights | Centralised logging, distributed tracing, alerting |
+
+### Application Insights
+Application Insights is Azure's application performance monitoring (APM) service. In V2 it replaces `Console.WriteLine` with a proper observability stack:
+
+- **Centralised log dashboard** — logs from all 5 services in one place, queryable via Kusto (KQL). No more SSHing into a VM and running `docker logs`.
+- **Distributed tracing** — a single incoming request (e.g. place order) can be traced end-to-end across Gateway → Orders → Inventory → Payments → Notifications, with per-service timing.
+- **Alerting** — set alerts on error rates, latency spikes, or specific log messages (e.g. page if `PaymentFailed` events exceed a threshold).
+- **Metrics** — request rates, failure rates, response times, dependency call durations — all out of the box.
+
+**How it wires in:**
+
+The V1 checklist includes migrating from `Console.WriteLine` to `ILogger`. Once that's done, adding Application Insights in V2 is a single NuGet package + one line in each `Program.cs`:
+
+```csharp
+builder.Services.AddApplicationInsightsTelemetry();
+```
+
+All existing `ILogger` calls automatically flow into Application Insights — no other code changes required. The connection string is stored in Key Vault and injected via the Container Apps environment config.
 
 ### Traffic flow
 ```

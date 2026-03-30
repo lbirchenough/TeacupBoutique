@@ -5,11 +5,12 @@ using inventory.Entities;
 using Messaging.Interfaces;
 using inventory.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using orders.Models;
 
 namespace inventory.Services;
 
-public class InventoryEventService(IMessagePublisher _publisher, InventoryDbContext _context)
+public class InventoryEventService(IMessagePublisher _publisher, InventoryDbContext _context, ILogger<InventoryEventService> _logger)
 {
     public async Task CheckStockAndPublishEvent(OrderPlacedDto placedOrder)
     {
@@ -91,7 +92,7 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            Console.WriteLine($" [inventory] Error reserving stock for order {placedOrder.OrderId}: {ex.Message}");
+            _logger.LogError(ex, "Error reserving stock for order {OrderId}", placedOrder.OrderId);
             allInStock = false;
         }
 
@@ -107,13 +108,13 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
         var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.OrderId == orderId);
         if (booking is null)
         {
-            Console.WriteLine($" [inventory] No booking found for payment captured on order {orderId}");
+            _logger.LogWarning("No booking found for payment captured on order {OrderId}", orderId);
             return;
         }
 
         if (booking.Status != BookingStatus.Reserved)
         {
-            Console.WriteLine($" [inventory] Booking {booking.Id} is not in Reserved status, skipping confirmation");
+            _logger.LogWarning("Booking {BookingId} is not in Reserved status, skipping confirmation", booking.Id);
             return;
         }
 
@@ -121,7 +122,7 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
         booking.ConfirmedAt = DateTime.UtcNow;
         booking.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        Console.WriteLine($" [inventory] Booking {booking.Id} confirmed for order {orderId}");
+        _logger.LogInformation("Booking {BookingId} confirmed for order {OrderId}", booking.Id, orderId);
     }
 
     public async Task HandleOrderCancelled(Guid orderId)
@@ -129,13 +130,13 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
         var booking = await _context.Bookings.FirstOrDefaultAsync(b => b.OrderId == orderId);
         if (booking is null)
         {
-            Console.WriteLine($" [inventory] No booking found for cancelled order {orderId}");
+            _logger.LogWarning("No booking found for cancelled order {OrderId}", orderId);
             return;
         }
 
         booking.Status = BookingStatus.Cancelled;
         booking.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-        Console.WriteLine($" [inventory] Booking cancelled and stock released for order {orderId}");
+        _logger.LogInformation("Booking cancelled and stock released for order {OrderId}", orderId);
     }
 }

@@ -5,15 +5,15 @@ using orders.Models;
 
 namespace inventory.Workers;
 
-public class OrderPlacedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
-    : RabbitMqConsumerBase(configuration)
+public class OrderPlacedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    : RabbitMqConsumerBase(configuration, loggerFactory)
 {
     public override string QueueName => "inventory.order-placed";
     public override string RoutingKey => "orders.OrderPlaced";
 
     public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        Console.WriteLine($" [inventory] OrderPlaced received: {message}");
+        _logger.LogDebug("OrderPlaced received: {Message}", message);
 
         var order = JsonSerializer.Deserialize<OrderPlacedDto>(message);
         if (order is null) return;
