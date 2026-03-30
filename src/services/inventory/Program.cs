@@ -10,7 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-//builder.Services.AddHostedService<HelloQueueConsumer>();
 builder.Services.AddHostedService<OrderPlacedConsumer>();
 builder.Services.AddHostedService<OrderCancelledConsumer>();
 builder.Services.AddHostedService<PaymentSucceededConsumer>();

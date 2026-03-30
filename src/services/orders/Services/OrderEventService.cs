@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using orders.Data;
 using orders.Entities;
 using orders.Interfaces;
@@ -8,7 +9,7 @@ using orders.Models;
 
 namespace orders.Services;
 
-public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _context, IConfiguration _configuration) : IOrderEvent
+public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _context, IConfiguration _configuration, ILogger<OrderEventService> _logger) : IOrderEvent
 {
     public async Task PublishOrder(Order order)
     {
@@ -39,7 +40,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         var order = await _context.Orders
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.Id == payload.OrderId);
-        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found"); return; }
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found", payload.OrderId); return; }
 
         var taxRate = _configuration.GetValue<decimal>("TaxRate", 0.10m);
         var rentalTotal = payload.Items.Sum(i => i.UnitPrice * i.Quantity);
@@ -69,7 +70,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         }
 
         await _context.SaveChangesAsync();
-        Console.WriteLine($" [orders] Order {payload.OrderId} prices stamped, status → AwaitingPayment");
+        _logger.LogInformation("Order {OrderId} prices stamped, status → AwaitingPayment", payload.OrderId);
 
         await _publisher.PublishAsync("orders.ReadyForPayment", JsonSerializer.Serialize(new ReadyForPaymentDto(payload.OrderId, total)));
     }
@@ -79,11 +80,11 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         var id = Guid.Parse(orderId);
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
 
-        if (order is null) { Console.WriteLine($" [orders] Order {orderId} not found"); return; }
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found", orderId); return; }
 
         order.Status = OrderStatus.OutOfStock;
         await _context.SaveChangesAsync();
-        Console.WriteLine($" [orders] Order {orderId} status → OutOfStock");
+        _logger.LogInformation("Order {OrderId} status → OutOfStock", orderId);
     }
 
     public async Task HandlePaymentSucceeded(string message)
@@ -95,7 +96,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.Id == payload.OrderId);
 
-        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found"); return; }
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found", payload.OrderId); return; }
 
         order.Status = OrderStatus.Confirmed;
         order.ConfirmedAt = DateTime.UtcNow;
@@ -119,7 +120,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         };
 
         await _publisher.PublishAsync("orders.OrderConfirmed", JsonSerializer.Serialize(confirmed));
-        Console.WriteLine($" [orders] Order {payload.OrderId} confirmed");
+        _logger.LogInformation("Order {OrderId} confirmed", payload.OrderId);
     }
 
     public async Task HandlePaymentFailed(string message)
@@ -128,7 +129,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         if (payload is null) return;
 
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == payload.OrderId);
-        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found"); return; }
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found", payload.OrderId); return; }
 
         order.PaymentAttempts++;
 
@@ -147,19 +148,19 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         if (order.PaymentAttempts >= 3)
         {
             await CancelOrderAsync(order, "Payment failed after 3 attempts");
-            Console.WriteLine($" [orders] Order {payload.OrderId} cancelled after 3 failed payment attempts");
+            _logger.LogWarning("Order {OrderId} cancelled after 3 failed payment attempts", payload.OrderId);
         }
         else
         {
             await _context.SaveChangesAsync();
-            Console.WriteLine($" [orders] Order {payload.OrderId} payment attempt {order.PaymentAttempts} of 3");
+            _logger.LogInformation("Order {OrderId} payment attempt {Attempt} of 3", payload.OrderId, order.PaymentAttempts);
         }
     }
 
     public async Task CancelOrder(Order order, string reason)
     {
         await CancelOrderAsync(order, reason);
-        Console.WriteLine($" [orders] Order {order.Id} cancelled: {reason}");
+        _logger.LogInformation("Order {OrderId} cancelled: {Reason}", order.Id, reason);
     }
 
     public async Task HandleBookingCancelled(string message)
@@ -168,16 +169,16 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         if (payload is null) return;
 
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == payload.OrderId);
-        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found for booking cancellation"); return; }
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found for booking cancellation", payload.OrderId); return; }
 
         if (order.Status is OrderStatus.Cancelled or OrderStatus.Completed)
         {
-            Console.WriteLine($" [orders] Order {payload.OrderId} already in terminal state, skipping");
+            _logger.LogWarning("Order {OrderId} already in terminal state, skipping", payload.OrderId);
             return;
         }
 
         await CancelOrderAsync(order, "Booking cancelled by administrator");
-        Console.WriteLine($" [orders] Order {payload.OrderId} cancelled via booking {payload.BookingId}");
+        _logger.LogInformation("Order {OrderId} cancelled via booking {BookingId}", payload.OrderId, payload.BookingId);
     }
 
     public async Task HandleBookingCompleted(string message)
@@ -187,11 +188,11 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         if (payload is null) return;
 
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == payload.OrderId);
-        if (order is null) { Console.WriteLine($" [orders] Order {payload.OrderId} not found for booking completion"); return; }
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found for booking completion", payload.OrderId); return; }
 
         if (order.Status is OrderStatus.Completed or OrderStatus.Cancelled)
         {
-            Console.WriteLine($" [orders] Order {payload.OrderId} already in terminal state, skipping completion");
+            _logger.LogWarning("Order {OrderId} already in terminal state, skipping completion", payload.OrderId);
             return;
         }
 
@@ -217,7 +218,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
             CompletionNotes = payload.CompletionNotes
         };
         await _publisher.PublishAsync("orders.OrderCompleted", JsonSerializer.Serialize(completedDto));
-        Console.WriteLine($" [orders] Order {payload.OrderId} completed via booking {payload.BookingId}");
+        _logger.LogInformation("Order {OrderId} completed via booking {BookingId}", payload.OrderId, payload.BookingId);
     }
 
     private async Task CancelOrderAsync(Order order, string reason)

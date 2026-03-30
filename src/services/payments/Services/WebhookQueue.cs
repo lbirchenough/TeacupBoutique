@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
 namespace payments.Services;
@@ -12,9 +13,11 @@ public class RabbitMqWebhookQueue : IWebhookQueue, IDisposable
 {
     public const string QueueName = "payments.process-webhook";
     private readonly IConnection _connection;
+    private readonly ILogger<RabbitMqWebhookQueue> _logger;
 
-    public RabbitMqWebhookQueue(IConfiguration config)
+    public RabbitMqWebhookQueue(IConfiguration config, ILogger<RabbitMqWebhookQueue> logger)
     {
+        _logger = logger;
         var factory = new ConnectionFactory { HostName = config["RabbitMq:Host"] };
         _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         using var ch = _connection.CreateChannelAsync().GetAwaiter().GetResult();
@@ -27,7 +30,7 @@ public class RabbitMqWebhookQueue : IWebhookQueue, IDisposable
         var body = Encoding.UTF8.GetBytes(stripeEventJson);
         var props = new BasicProperties { Persistent = true };
         await channel.BasicPublishAsync(exchange: "", routingKey: QueueName, mandatory: false, basicProperties: props, body: body);
-        Console.WriteLine($" [payments] Enqueued webhook event to {QueueName}");
+        _logger.LogDebug("Enqueued webhook event to {QueueName}", QueueName);
     }
 
     public void Dispose() => _connection?.Dispose();

@@ -5,15 +5,15 @@ using notifications.Models;
 
 namespace notifications.Workers;
 
-public class EmailChangedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
-    : RabbitMqConsumerBase(configuration)
+public class EmailChangedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    : RabbitMqConsumerBase(configuration, loggerFactory)
 {
     public override string QueueName => "notifications.email-changed";
     public override string RoutingKey => "auth.EmailChanged";
 
     public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        Console.WriteLine($" [notifications] EmailChanged received: {message}");
+        _logger.LogDebug("EmailChanged received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<EmailChangedEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;

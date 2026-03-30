@@ -1,9 +1,10 @@
+using Microsoft.Extensions.Logging;
 using notifications.Interfaces;
 using notifications.Models;
 
 namespace notifications.Services;
 
-public class MailgunEmailService(HttpClient httpClient, IConfiguration config) : IEmailService
+public class MailgunEmailService(HttpClient httpClient, IConfiguration config, ILogger<MailgunEmailService> logger) : IEmailService
 {
     private readonly string _domain = config["Mailgun:Domain"]!;
     private readonly string _fromAddress = config["Mailgun:FromAddress"]!;
@@ -21,6 +22,6 @@ public class MailgunEmailService(HttpClient httpClient, IConfiguration config) :
 
         var response = await httpClient.PostAsync($"v3/{_domain}/messages", form);
         response.EnsureSuccessStatusCode();
-        Console.WriteLine($" [notifications] Email sent to {message.To} — {message.Subject}");
+        logger.LogInformation("Email sent to {To} — {Subject}", message.To, message.Subject);
     }
 }

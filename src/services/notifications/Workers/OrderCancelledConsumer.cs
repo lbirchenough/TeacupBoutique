@@ -5,15 +5,15 @@ using notifications.Models;
 
 namespace notifications.Workers;
 
-public class OrderCancelledConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory)
-    : RabbitMqConsumerBase(configuration)
+public class OrderCancelledConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
+    : RabbitMqConsumerBase(configuration, loggerFactory)
 {
     public override string QueueName => "notifications.order-cancelled";
     public override string RoutingKey => "orders.OrderCancelled";
 
     public override async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        Console.WriteLine($" [notifications] OrderCancelled received: {message}");
+        _logger.LogDebug("OrderCancelled received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<OrderCancelledEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;
