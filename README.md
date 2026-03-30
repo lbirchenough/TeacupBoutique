@@ -309,18 +309,79 @@ In CI/production, set these as environment variables before running `npm run bui
 
 # Production Environment Strategy
 
-## V1 — Single VM (Docker Compose)
+## Hosting Options
 
-The simplest viable deployment. Everything runs on one machine, exactly like local dev but on a cloud VM (EC2, Azure VM, DigitalOcean Droplet etc).
+### Option 1 — Single VM + Cloudflare (Recommended for V1)
 
-All containers share the same Docker network so they reach each other by container name — same as local dev. RabbitMQ, SQL Server, and all services are just containers in the same Compose stack. No cloud-specific infrastructure knowledge required.
+Everything runs on one machine, exactly like local dev but on a cloud VM (EC2, Azure VM, DigitalOcean Droplet etc). An Nginx container serves the React SPA static build, YARP handles all API traffic. Cloudflare sits in front as a reverse proxy — handling HTTPS, DDoS protection, and CDN edge caching — so the VM itself only needs to speak HTTP internally.
 
-**Rough cost:** ~$20–40/month for a VM with enough resources (2–4 vCPU, 4–8GB RAM).
+All containers share the same Docker network so they reach each other by container name — same as local dev. No cloud-specific infrastructure knowledge required.
+
+**Cost:** ~$20–40/month VM + domain (see Domain Progression below)
+
+**Deploys:** GitHub Actions → SSH → `docker compose up --build`. Brief downtime on redeploy, acceptable for low-traffic boutique use.
+
+**SEO:** React SPA. Google does execute JavaScript and will index the site, but with a slight delay versus server-rendered HTML. Not a meaningful issue for a local boutique hire business with low search competition.
 
 **Tradeoffs:**
 - If the VM goes down, everything goes down simultaneously
 - Scaling means resizing the VM, not adding instances
+- Microservice boundaries are enforced in code but not exploited operationally — you don't get independent scaling or independent deploys until V2
 - Completely fine for a boutique app with low, predictable traffic
+
+---
+
+### Option 2 — Single VM + Vercel (frontend) + Cloudflare
+
+Same VM for all backend services, React SPA hosted on Vercel instead of served from the VM. Vercel auto-deploys on push to main with zero downtime and handles its own HTTPS and DDoS protection. Cloudflare is still required in front of the VM to protect the backend API.
+
+**Cost:** Same as Option 1, Vercel free tier adds nothing
+
+**Deploys:** Frontend auto-deploys via Vercel on push. Backend still requires SSH/scripted deploy.
+
+**SEO:** No meaningful difference from Option 1 — still a client-rendered SPA.
+
+**Why not chosen:** Cloudflare's edge caching already covers the CDN benefit Vercel provides for static assets. Adding Vercel introduces a second external service and splits the deploy story without a meaningful gain.
+
+---
+
+### Option 3 — Single VM + Next.js (SSR) + Cloudflare
+
+Migrate the React SPA to Next.js, which acts purely as a server-side rendering layer over the existing .NET backend. Next.js renders HTML on the server before sending it to the browser — product pages, home page etc arrive fully rendered. The .NET microservices are unchanged; Next.js replaces the Vite SPA as the frontend only.
+
+**Cost:** Same as Option 2
+
+**Deploys:** Same as Option 2
+
+**SEO:** Best option — fully server-rendered HTML for all public pages. Crawlers receive content immediately with no JavaScript execution required.
+
+**Why not chosen:** Requires a full frontend rewrite (TanStack Router → Next.js file routing, client-side fetching → Server Components, auth cookie handling rearchitected for SSR). The SEO benefit does not justify this effort for a local boutique hire business competing against other small local operators — not high-volume keyword competition where crawl timing materially affects rankings.
+
+---
+
+## V1 — Single VM (Docker Compose)
+
+**Chosen approach: Option 1.**
+
+**Rough cost:** ~$20–40/month for a VM with enough resources (2–4 vCPU, 4–8GB RAM).
+
+### HTTPS and DDoS protection
+
+Cloudflare acts as a reverse proxy in front of the VM. Point the domain's DNS A record at the VM IP with Cloudflare's proxy enabled (orange cloud). Cloudflare terminates HTTPS from the browser and forwards traffic to the VM. For full end-to-end encryption, use a Cloudflare Origin Certificate on the VM with SSL mode set to Full (Strict). Origin Certificates are free and valid for 15 years — no renewal overhead.
+
+Cloudflare free tier includes:
+- HTTPS/TLS termination
+- DDoS protection
+- CDN edge caching
+- Real VM IP hidden from public DNS
+
+### CI/CD
+
+```
+Push to main → GitHub Actions builds images → SSH into VM → docker compose pull + up
+```
+
+Brief downtime on redeploy. Acceptable for V1 traffic levels.
 
 ---
 
@@ -335,7 +396,7 @@ Spread the app across proper Azure managed services. The V1 → V2 migration is 
 | 4 services + gateway | Container Apps | Managed containers, scales to zero, built-in load balancing |
 | React SPA | Static Web Apps | Free tier, global CDN, built-in HTTPS |
 | SQL Server (per service) | Azure SQL | Managed SQL Server |
-| RabbitMQ | Azure Service Bus | Swap `IMessagePublisher` implementation. CloudAMQP is a zero-code-change alternative. |
+| RabbitMQ | Azure Service Bus | Swap `IMessagePublisher` implementation |
 | Docker images | Container Registry | Stores built images |
 | Secrets | Key Vault | Connection strings, JWT secret, Stripe keys |
 | Monitoring | Application Insights | Replaces Console.WriteLines |
@@ -356,6 +417,14 @@ Azure SQL         Service Bus
 ### Why Container Apps scale-to-zero matters
 Container Apps can spin down idle services and spin them back up on demand. For a boutique app that's quiet overnight, this means you're not paying for compute when nobody's using the site. Services are already stateless so scale-out (multiple instances under load) also works without code changes.
 
+### CI/CD
+
+```
+Push to main → GitHub Actions builds images → push to Container Registry → az containerapp update → rolling deploy
+```
+
+Each service deploys independently with zero downtime. This is where the microservices architecture pays its operational dividends — independent scaling, independent deploys, fault isolation.
+
 ### Terraform
 Manages all interconnected Azure resources as code. Benefits:
 - Spin up a full staging environment with one command
@@ -373,3 +442,27 @@ Manages all interconnected Azure resources as code. Benefits:
 5. Migrate messaging to Azure Service Bus (swap `IMessagePublisher` implementation)
 6. Deploy services to Container Apps, Static Web Apps for the frontend
 7. Cut over DNS, decommission the VM
+
+---
+
+## Domain Progression
+
+### Showcase (V1)
+
+No new domain required. Add a subdomain A record to an existing Cloudflare-managed domain pointing at the VM IP, with the proxy toggled on:
+
+```
+teacupboutique.yourdomain.com  →  VM IP  (Cloudflare proxy on)
+```
+
+Each DNS record in Cloudflare has an independent proxy toggle — the subdomain being proxied has no effect on the main domain's configuration.
+
+### Commercial (V2)
+
+Buy a dedicated domain (e.g. `teacupboutique.com`) through Cloudflare at cost (~$10–15/year, no registrar markup). Point it at the V2 infrastructure.
+
+Two config changes required in the codebase when cutting over:
+1. **CORS** — update allowed origins in the gateway config
+2. **Frontend** — update `VITE_API_URL` env var in the build pipeline
+
+The showcase subdomain can remain live or be retired.
