@@ -4,7 +4,7 @@
 - [x] Fix inventory race condition (atomic stock check + booking creation)
 - [x] Add price validation on order submission against DB product prices
 - [x] Fix CAPTCHA fail-open (TurnstileService should fail closed when Cloudflare unreachable)
-- [ ] Implement refund pathway for cancelled-after-payment orders
+- [x] Implement refund pathway for cancelled-after-payment orders
 
 ## High Priority (Production Readiness)
 - [x] Make CORS configurable per environment
@@ -14,11 +14,9 @@
 - [x] Replace Console.WriteLine with ILogger throughout all services
 
 ## Medium Priority (Functionality Gaps)
-- [ ] Add admin booking list endpoint
-- [ ] Add admin inventory item management endpoints
-- [ ] Add admin refund/manual refund trigger endpoint
-- [ ] Return DTO from GET /api/products/{id} instead of full entity
-- [ ] Remove commented-out code (OrdersController update endpoint)
+- [x] Add admin refund/manual refund trigger endpoint
+- [x] Return DTO from GET /api/products/{id} instead of full entity
+- [x] Remove commented-out code (OrdersController update endpoint)
 
 ## Lower Priority (Polish / Maintenance)
 - [ ] Add test coverage for critical paths (JWT flow, booking logic, Stripe webhooks)
