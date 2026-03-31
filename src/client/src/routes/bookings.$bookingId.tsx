@@ -437,6 +437,17 @@ function BookingDetailPage() {
                         <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm mb-6">
                             <Detail label="Order Number" value={order.orderNumber} />
                             <Detail label="Status" value={order.status} />
+                            {order.status === 'Cancelled' && order.cancellationReason && (
+                                <Detail label="Cancellation Reason" value={order.cancellationReason} />
+                            )}
+                            {(order.status === 'Completed' || order.status === 'Cancelled') && order.paymentStatus === 'Paid' && (
+                                <Detail label="Refund" value={
+                                    order.refundStatus === 'FullyRefunded' ? `Fully refunded — $${order.amountRefunded?.toFixed(2)}` :
+                                    order.refundStatus === 'DepositRefunded' ? `Deposit refunded — $${order.amountRefunded?.toFixed(2)}` :
+                                    order.refundStatus === 'DepositPartiallyRefunded' ? `Partial refund — $${order.amountRefunded?.toFixed(2)}` :
+                                    'No refund issued'
+                                } />
+                            )}
                             <Detail label="Customer" value={order.customerName} />
                             <Detail label="Email" value={order.customerEmail} />
                             <Detail label="Phone" value={order.customerPhone} />
@@ -446,21 +457,46 @@ function BookingDetailPage() {
                                 })
                             } />
                         </div>
-                        <div className="border-t border-gold/20 pt-4 space-y-2 text-sm">
+                        <div className="border-t border-gold/20 pt-4 space-y-4">
                             {order.orderItems?.map(item => (
-                                <div key={item.id} className="flex justify-between text-brown-mid">
-                                    <span>{item.name} × {item.quantity}</span>
-                                    <span>${item.total.toFixed(2)}</span>
+                                <div key={item.id} className="flex gap-4 items-center">
+                                    <div className="w-12 h-12 bg-cream-dark overflow-hidden shrink-0 flex items-center justify-center">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="font-script text-sm text-brown-light">—</span>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-serif text-brown text-sm truncate">{item.name}</p>
+                                        {item.colour && <p className="text-xs text-brown-light tracking-wide">{item.colour}</p>}
+                                        <p className="text-xs text-brown-mid mt-0.5">Qty {item.quantity} × ${item.unitPrice.toFixed(2)}/day</p>
+                                        {item.depositAmount > 0 && (
+                                            <p className="text-xs text-brown-light mt-0.5">+${item.depositAmount.toFixed(2)} deposit</p>
+                                        )}
+                                    </div>
+                                    <p className="font-semibold text-brown text-sm shrink-0">${item.total.toFixed(2)}</p>
                                 </div>
                             ))}
-                            <div className="flex justify-between text-brown-light text-xs pt-2 border-t border-gold/10">
-                                <span>Subtotal (ex GST)</span><span>${order.subtotal.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-brown-light text-xs">
-                                <span>GST (10%)</span><span>${order.tax.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between font-semibold text-brown text-base pt-2 border-t border-gold/20">
-                                <span>Total</span><span>${order.total.toFixed(2)}</span>
+                            <div className="border-t border-gold/20 pt-4 space-y-2 text-sm">
+                                <div className="flex justify-between font-semibold text-brown text-base">
+                                    <span>Hire total</span><span>${(order.total - order.depositTotal).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-brown-light text-xs">
+                                    <span>GST included (10%)</span><span>${order.tax.toFixed(2)}</span>
+                                </div>
+                                {order.depositTotal > 0 && (
+                                    <div className="flex justify-between text-brown-mid pt-2 border-t border-gold/20">
+                                        <div>
+                                            <span>Security deposit</span>
+                                            <p className="text-xs text-brown-light mt-0.5">Refundable subject to item condition</p>
+                                        </div>
+                                        <span>${order.depositTotal.toFixed(2)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between font-semibold text-brown text-base pt-2 border-t border-gold/20">
+                                    <span>Total</span><span>${order.total.toFixed(2)}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

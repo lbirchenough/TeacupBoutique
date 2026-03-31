@@ -1,3 +1,5 @@
+import { Link } from '@tanstack/react-router'
+
 export function Footer() {
   return (
     <footer className="bg-cream border-t border-gold/20 mt-auto">
@@ -29,8 +31,9 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gold/20 mt-10 pt-6 text-center text-xs text-brown-light">
-          © {new Date().getFullYear()} Teacup Boutique. All rights reserved.
+        <div className="border-t border-gold/20 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-brown-light">
+          <span>© {new Date().getFullYear()} Teacup Boutique. All rights reserved.</span>
+          <Link to="/terms" className="hover:text-brown transition-colors tracking-widest uppercase">Terms & Conditions</Link>
         </div>
       </div>
     </footer>

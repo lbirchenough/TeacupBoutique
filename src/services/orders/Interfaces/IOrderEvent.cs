@@ -13,4 +13,7 @@ public interface IOrderEvent
     Task CancelOrder(Order order, string reason);
     Task HandleBookingCancelled(string message);
     Task HandleBookingCompleted(string message);
+    Task RefundOrder(Guid orderId, decimal amount);
+    Task HandleRefundSucceeded(string message);
+    Task HandleRefundFailed(string message);
 }

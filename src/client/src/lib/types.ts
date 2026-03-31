@@ -70,7 +70,8 @@ export interface InventoryItemUpdateDto {
 
 // Orders (response from API)
 export type OrderStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'AwaitingPayment' | 'OutOfStock'
-export type PaymentStatus = 'Pending' | 'Paid' | 'Refunded'
+export type PaymentStatus = 'Pending' | 'Paid'
+export type RefundStatus = 'None' | 'DepositRefunded' | 'DepositPartiallyRefunded' | 'FullyRefunded'
 
 export interface OrderDetail {
     id: string;
@@ -89,6 +90,8 @@ export interface OrderDetail {
     reservationDate: string;
     paymentStatus?: PaymentStatus | null;
     paymentId?: string | null;
+    refundStatus?: RefundStatus | null;
+    amountRefunded?: number | null;
     depositTotal: number;
     cancelledAt?: string | null;
     cancellationReason?: string | null;

@@ -16,7 +16,7 @@ const statusConfig: Record<BookingStatus, { label: string; bg: string; text: str
     Cancelled:  { label: 'Cancelled',   bg: 'bg-red-50',    text: 'text-red-800',    dot: 'bg-red-400' },
 }
 
-const statusOrder: BookingStatus[] = ['CheckedOut', 'Confirmed', 'Reserved', 'Returned', 'Completed']
+const statusOrder: BookingStatus[] = ['CheckedOut', 'Confirmed', 'Reserved', 'Returned', 'Completed', 'Cancelled']
 
 function BookingsPage() {
     const { data: bookings, isPending, isError } = useQuery<BookingListItem[]>({

@@ -17,6 +17,8 @@ builder.Services.AddHostedService<PaymentSucceededConsumer>();
 builder.Services.AddHostedService<PaymentFailedConsumer>();
 builder.Services.AddHostedService<BookingCancelledConsumer>();
 builder.Services.AddHostedService<BookingCompletedConsumer>();
+builder.Services.AddHostedService<RefundSucceededConsumer>();
+builder.Services.AddHostedService<RefundFailedConsumer>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<IOrderEvent, OrderEventService>();
 builder.Services.AddHttpClient<TurnstileService>();
