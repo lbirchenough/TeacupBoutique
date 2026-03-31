@@ -100,6 +100,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
 
         order.Status = OrderStatus.Confirmed;
         order.ConfirmedAt = DateTime.UtcNow;
+        order.PaymentStatus = PaymentStatus.Paid;
         await _context.SaveChangesAsync();
 
         var confirmed = new OrderConfirmedDto
@@ -221,12 +222,66 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         _logger.LogInformation("Order {OrderId} completed via booking {BookingId}", payload.OrderId, payload.BookingId);
     }
 
+    public async Task RefundOrder(Guid orderId, decimal amount)
+    {
+        var payload = JsonSerializer.Serialize(new { OrderId = orderId, Amount = amount });
+        await _publisher.PublishAsync("orders.RefundRequested", payload);
+        _logger.LogInformation("Admin-triggered refund of {Amount} requested for order {OrderId}", amount, orderId);
+    }
+
+    public async Task HandleRefundSucceeded(string message)
+    {
+        var payload = JsonSerializer.Deserialize<RefundSucceededDto>(message);
+        if (payload is null) return;
+
+        var order = await _context.Orders.FindAsync(payload.OrderId);
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found for refund succeeded", payload.OrderId); return; }
+
+        order.AmountRefunded += payload.Amount;
+
+        order.RefundStatus = order.Status switch
+        {
+            OrderStatus.Completed when order.AmountRefunded >= order.DepositTotal => RefundStatus.DepositRefunded,
+            OrderStatus.Completed => RefundStatus.DepositPartiallyRefunded,
+            OrderStatus.Cancelled when order.AmountRefunded >= order.Total => RefundStatus.FullyRefunded,
+            _ => RefundStatus.DepositRefunded
+        };
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Refund of {Amount} applied to order {OrderId}, status now {RefundStatus}",
+            payload.Amount, payload.OrderId, order.RefundStatus);
+    }
+
+    public async Task HandleRefundFailed(string message)
+    {
+        var payload = JsonSerializer.Deserialize<RefundFailedDto>(message);
+        if (payload is null) return;
+        _logger.LogError("Refund of {Amount} failed for order {OrderId}: {Reason}",
+            payload.Amount, payload.OrderId, payload.Reason);
+    }
+
     private async Task CancelOrderAsync(Order order, string reason)
     {
         order.Status = OrderStatus.Cancelled;
         order.CancelledAt = DateTime.UtcNow;
         order.CancellationReason = reason;
         await _context.SaveChangesAsync();
+
+        if (order.PaymentStatus == PaymentStatus.Paid)
+        {
+            var daysUntilReservation = (order.ReservationDate.ToDateTime(TimeOnly.MinValue) - DateTime.UtcNow).TotalDays;
+            var refundAmount = daysUntilReservation > 30
+                ? order.Total           // full refund — enough notice given
+                : order.DepositTotal;   // late cancellation — keep hire amount, return deposit
+
+            if (refundAmount > 0)
+            {
+                var refundPayload = JsonSerializer.Serialize(new { OrderId = order.Id, Amount = refundAmount });
+                await _publisher.PublishAsync("orders.RefundRequested", refundPayload);
+                _logger.LogInformation("Refund of {Amount} requested for cancelled order {OrderId} ({Days} days until reservation)",
+                    refundAmount, order.Id, Math.Round(daysUntilReservation));
+            }
+        }
 
         var cancelledDto = new OrderCancelledDto
         {
@@ -239,4 +294,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
 
         await _publisher.PublishAsync("orders.OrderCancelled", JsonSerializer.Serialize(cancelledDto));
     }
+
+    private record RefundSucceededDto(Guid OrderId, decimal Amount, string StripeRefundId);
+    private record RefundFailedDto(Guid OrderId, decimal Amount, string Reason);
 }

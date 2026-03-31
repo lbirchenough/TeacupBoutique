@@ -18,7 +18,14 @@ public enum PaymentStatus
 {
     Pending,
     Paid,
-    Refunded
+}
+
+public enum RefundStatus
+{
+    None,
+    DepositRefunded,            // deposit returned — check Order.Status for context (completed vs late cancellation)
+    DepositPartiallyRefunded,   // partial deposit returned (damages kept)
+    FullyRefunded,              // early cancellation — everything returned
 }
 
 public class Order
@@ -67,6 +74,11 @@ public class Order
 
     public PaymentStatus? PaymentStatus { get; set; }
     public Guid? PaymentId { get; set; }
+
+    public RefundStatus RefundStatus { get; set; } = RefundStatus.None;
+
+    [Column(TypeName = "decimal(10,2)")]
+    public decimal AmountRefunded { get; set; } = 0;
 
     public int PaymentAttempts { get; set; } = 0;
 

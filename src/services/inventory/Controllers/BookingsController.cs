@@ -105,7 +105,6 @@ namespace inventory.Controllers
         public async Task<IActionResult> GetBookings()
         {
             var bookings = await _context.Bookings
-                .Where(b => b.Status != BookingStatus.Cancelled)
                 .Select(b => new
                 {
                     b.Id,

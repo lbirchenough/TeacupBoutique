@@ -94,6 +94,21 @@ namespace orders.Controllers
             return Ok(order);
         }
 
+        [HttpPost("admin/{orderId:guid}/refund")]
+        public async Task<IActionResult> RefundOrder(Guid orderId, [FromBody] RefundRequestDto dto)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order is null) return NotFound();
+            if (order.PaymentStatus != PaymentStatus.Paid) return BadRequest("Order has not been paid.");
+
+            var maxRefundable = order.Total - order.AmountRefunded;
+            if (dto.Amount <= 0 || dto.Amount > maxRefundable)
+                return BadRequest($"Amount must be between 0.01 and {maxRefundable:F2}.");
+
+            await orderEventService.RefundOrder(orderId, dto.Amount);
+            return Accepted();
+        }
+
         [HttpPost("{orderNumber}/cancel")]
         public async Task<IActionResult> CancelOrder(string orderNumber, [FromQuery] Guid? token)
         {

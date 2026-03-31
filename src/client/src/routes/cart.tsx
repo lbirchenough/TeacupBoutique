@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { useCart } from '../lib/useCart'
 import { ordersApi } from '../lib/ordersApi'
+import { TermsModal } from '../components/TermsModal'
 import type { CreateOrderRequest } from '../lib/types'
 
 export const Route = createFileRoute('/cart')({
@@ -30,6 +31,8 @@ function CartPage() {
     })
     const [showDateChangeConfirm, setShowDateChangeConfirm] = useState(false)
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+    const [agreedToTerms, setAgreedToTerms] = useState(false)
+    const [showTerms, setShowTerms] = useState(false)
 
     const orderMutation = useMutation({
         mutationFn: (dto: CreateOrderRequest) => ordersApi.createOrder(dto),
@@ -42,8 +45,8 @@ function CartPage() {
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
         if (items.length === 0) return
-
         if (!turnstileToken) return
+        if (!agreedToTerms) return
 
         const dto: CreateOrderRequest = {
             customerName: form.customerName,
@@ -103,6 +106,7 @@ function CartPage() {
     }
 
     return (
+        <>
         <div>
             {/* Header */}
             <div className="text-center pt-16 pb-10 px-6">
@@ -297,9 +301,29 @@ function CartPage() {
                                 onExpire={() => setTurnstileToken(null)}
                             />
 
+                            <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={agreedToTerms}
+                                    onChange={e => setAgreedToTerms(e.target.checked)}
+                                    className="mt-0.5 shrink-0 accent-brown"
+                                />
+                                <span className="text-xs text-brown-mid leading-relaxed">
+                                    I have read and agree to the{' '}
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTerms(true)}
+                                        className="text-brown underline underline-offset-2 hover:text-gold transition-colors"
+                                    >
+                                        Terms & Conditions
+                                    </button>
+                                    , including the refund and cancellation policy.
+                                </span>
+                            </label>
+
                             <button
                                 type="submit"
-                                disabled={orderMutation.isPending || !turnstileToken}
+                                disabled={orderMutation.isPending || !turnstileToken || !agreedToTerms}
                                 className="w-full bg-brown hover:bg-brown-mid text-cream py-3.5 text-xs font-semibold tracking-[0.15em] uppercase disabled:opacity-50 transition-colors mt-2"
                             >
                                 {orderMutation.isPending ? 'Placing Order…' : 'Place Order'}
@@ -309,6 +333,8 @@ function CartPage() {
                 </div>
             </div>
         </div>
+        {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
+        </>
     )
 }
 

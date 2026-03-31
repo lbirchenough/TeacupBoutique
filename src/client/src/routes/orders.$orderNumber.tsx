@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ordersApi } from '../lib/ordersApi'
 import { StripePaymentForm } from '../components/StripePaymentForm'
-import type { OrderDetail, OrderStatus } from '../lib/types'
+import type { OrderDetail, OrderStatus, RefundStatus } from '../lib/types'
 
 export const Route = createFileRoute('/orders/$orderNumber')({
     validateSearch: (search: Record<string, unknown>) => ({
@@ -202,6 +202,25 @@ function OrderDetailPage() {
                     </div>
                 )}
 
+                {/* Refund status — shown only for completed or cancelled paid orders */}
+                {(order.status === 'Completed' || order.status === 'Cancelled') && order.paymentStatus === 'Paid' && (
+                    <div className="bg-white border border-gold/20 p-6">
+                        <h2 className="font-serif text-lg text-brown mb-3">Refund</h2>
+                        {order.refundStatus === 'FullyRefunded' && (
+                            <p className="text-sm text-brown-mid">A full refund of <span className="font-medium">${order.amountRefunded?.toFixed(2)}</span> has been processed to your original payment method.</p>
+                        )}
+                        {order.refundStatus === 'DepositRefunded' && (
+                            <p className="text-sm text-brown-mid">Your security deposit of <span className="font-medium">${order.amountRefunded?.toFixed(2)}</span> has been refunded to your original payment method.</p>
+                        )}
+                        {order.refundStatus === 'DepositPartiallyRefunded' && (
+                            <p className="text-sm text-brown-mid">A partial refund of <span className="font-medium">${order.amountRefunded?.toFixed(2)}</span> has been processed. A portion of your deposit was retained to cover damages.</p>
+                        )}
+                        {(!order.refundStatus || order.refundStatus === 'None') && (
+                            <p className="text-sm text-brown-light">No refund has been issued.</p>
+                        )}
+                    </div>
+                )}
+
                 {/* Registration prompt for guests */}
                 {!order.userId && (
                     <div className="bg-cream-dark border border-gold/30 px-6 py-5 flex items-center justify-between gap-6">
@@ -246,7 +265,20 @@ function OrderDetailPage() {
                         ) : (
                             <div className="space-y-3">
                                 <p className="text-sm text-brown font-serif">Are you sure you want to cancel this order?</p>
-                                <p className="text-xs text-brown-light">This cannot be undone.</p>
+                                {order.paymentStatus === 'Paid' ? (() => {
+                                    const daysUntil = Math.ceil((new Date(order.reservationDate + 'T00:00:00').getTime() - Date.now()) / 86_400_000)
+                                    return daysUntil > 30 ? (
+                                        <p className="text-xs text-green-700 bg-green-50 border border-green-200 px-3 py-2">
+                                            Your reservation is <span className="font-medium">{daysUntil} days away</span> — you will receive a <span className="font-medium">full refund</span> of ${order.total.toFixed(2)}.
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2">
+                                            Your reservation is <span className="font-medium">{daysUntil} day{daysUntil !== 1 ? 's' : ''} away</span>. As this is within 30 days, only your security deposit of <span className="font-medium">${order.depositTotal.toFixed(2)}</span> will be refunded. The hire amount is non-refundable.
+                                        </p>
+                                    )
+                                })() : (
+                                    <p className="text-xs text-brown-light">This cannot be undone.</p>
+                                )}
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => cancelMutation.mutate()}

@@ -22,6 +22,7 @@ builder.Services.AddHttpClient<TurnstileService>();
 builder.Services.AddSingleton<IWebhookQueue, RabbitMqWebhookQueue>();
 builder.Services.AddHostedService<PaymentProcessorWorker>();
 builder.Services.AddHostedService<ReadyForPaymentConsumer>();
+builder.Services.AddHostedService<RefundRequestedConsumer>();
 
 
 var app = builder.Build();
