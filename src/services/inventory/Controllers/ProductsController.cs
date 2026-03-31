@@ -68,16 +68,34 @@ namespace inventory.Controllers
         public async Task<IActionResult> GetProduct(Guid productId)
         {
             var product = await _context.Products
-                .Include(p => p.Photos)
+                .Where(p => p.Id == productId)
+                .Select(p => new ProductDetailDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Contents = p.Contents,
+                    Colour = p.Colour,
+                    Price = p.Price,
+                    DepositAmount = p.DepositAmount,
+                    Servings = p.Servings,
+                    MinRentalDays = p.MinRentalDays,
+                    MaxRentalDays = p.MaxRentalDays,
+                    BufferDays = p.BufferDays,
+                    IsActive = p.IsActive,
+                    Photos = p.Photos!.Select(ph => new ProductPhotoDto
+                    {
+                        Id = ph.Id,
+                        Url = ph.Url,
+                        IsFeatured = ph.IsFeatured,
+                        DisplayOrder = ph.DisplayOrder
+                    }).ToList()
+                })
                 .AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == productId);
+                .FirstOrDefaultAsync();
 
-            if (product == null)
-            {
-                return NotFound();
-            }
+            if (product == null) return NotFound();
 
-           //TODO WE SHOULD ADD A DTO AND DO SELECT PROJECTION HERE TOO, RETURNING DTO BETTER 
             return Ok(product);
         }
 

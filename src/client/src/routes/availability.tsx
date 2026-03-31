@@ -17,6 +17,7 @@ function AvailabilityPage() {
     const { reservationDate: cartReservationDate, items: cartItems } = useCart()
 
     const [selectedDate, setSelectedDate] = useState(() => cartStore.getReservationDate() ?? '')
+    const [draftDate, setDraftDate] = useState(() => cartStore.getReservationDate() ?? '')
     const [quantities, setQuantities] = useState<Record<string, number>>({})
     const [modalProduct, setModalProduct] = useState<ProductAvailabilityDto | null>(null)
     const [showConflictPrompt, setShowConflictPrompt] = useState(false)
@@ -115,7 +116,7 @@ function AvailabilityPage() {
                 </p>
                 {selectedDate && (
                     <button
-                        onClick={() => setSelectedDate('')}
+                        onClick={() => { setSelectedDate(''); setDraftDate('') }}
                         className="text-xs text-brown-light hover:text-brown underline underline-offset-2 transition-colors mt-3"
                     >
                         Change date
@@ -131,19 +132,28 @@ function AvailabilityPage() {
             {/* Date picker — below header, hidden once date chosen */}
             {!selectedDate && (
                 <div className="flex justify-center px-6 pb-16">
-                    <div className="relative w-full max-w-sm">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
+                    <div className="w-full max-w-sm">
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                                <svg className="w-5 h-5 text-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                </svg>
+                            </div>
+                            <input
+                                type="date"
+                                min={today}
+                                value={draftDate}
+                                onChange={e => setDraftDate(e.target.value)}
+                                className="w-full border-2 border-gold bg-white pl-12 pr-4 py-4 text-brown focus:outline-none focus:border-gold/80 text-base"
+                            />
                         </div>
-                        <input
-                            type="date"
-                            min={today}
-                            value={selectedDate}
-                            onChange={e => setSelectedDate(e.target.value)}
-                            className="w-full border-2 border-gold bg-white pl-12 pr-4 py-4 text-brown focus:outline-none focus:border-gold/80 text-base"
-                        />
+                        <button
+                            disabled={!draftDate}
+                            onClick={() => setSelectedDate(draftDate)}
+                            className="w-full mt-3 bg-brown hover:bg-brown-mid disabled:opacity-40 text-cream py-3.5 text-xs font-semibold tracking-[0.15em] uppercase transition-colors"
+                        >
+                            Check Availability
+                        </button>
                     </div>
                 </div>
             )}
