@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json;
 using inventory.Data;
 using inventory.Entities;
@@ -30,27 +29,27 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
 
             foreach (var item in placedOrder.Items)
             {
-                var availableItems = await _context.InventoryItems
-                    .Where(inv => inv.ProductId == item.ProductId
-                        && inv.Status == Status.Available
-                        && !inv.BookingItems.Any(bi =>
+                var availableSets = await _context.ProductSets
+                    .Where(ps => ps.ProductId == item.ProductId
+                        && ps.Status != Status.Retired
+                        && !ps.BookingItems!.Any(bi =>
                             bi.ReservationDate == placedOrder.ReservationDate
                             && bi.Booking!.Status != BookingStatus.Cancelled))
                     .Take(item.Quantity)
                     .ToListAsync();
 
-                if (availableItems.Count < item.Quantity)
+                if (availableSets.Count < item.Quantity)
                 {
                     allInStock = false;
                     break;
                 }
 
-                foreach (var inventoryItem in availableItems)
+                foreach (var productSet in availableSets)
                 {
                     bookingItems.Add(new BookingItem
                     {
                         ProductId = item.ProductId,
-                        InventoryItemId = inventoryItem.Id,
+                        ProductSetId = productSet.Id,
                         ReservationDate = placedOrder.ReservationDate,
                     });
                 }

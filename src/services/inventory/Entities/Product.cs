@@ -10,17 +10,10 @@ public class Product
     public required string Description { get; set; }
     public string? Contents { get; set; }
     public string? Colour { get; set; }
-    // public string? Size { get; set; }
-    // public string? Material { get; set; }
-    // public string? Style { get; set; }
-    // public string? Pattern { get; set; }
-    // public string? Brand { get; set; }
-    // public string? Model { get; set; }
-    // public string? Series { get; set; }
 
     [Column(TypeName = "decimal(10,2)")]
     public decimal Price { get; set; }
-    
+
     [Column(TypeName = "decimal(10,2)")]
     public decimal DepositAmount { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -30,14 +23,11 @@ public class Product
     public bool IsActive { get; set; } = true;
     public int Servings { get; set; }
 
-
     // Navigation properties
     public Category? Category { get; set; }
     public List<Photo>? Photos { get; set; }
     public List<Tag>? Tags { get; set; }
-    public List<InventoryItem>? InventoryItems { get; set; }
+    public List<ProductSet>? ProductSets { get; set; }
+    public List<SetItem>? SetItems { get; set; }
     public List<BookingItem>? BookingItems { get; set; }
-
-    
-    
 }

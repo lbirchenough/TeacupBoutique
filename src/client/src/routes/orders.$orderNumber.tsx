@@ -13,15 +13,16 @@ export const Route = createFileRoute('/orders/$orderNumber')({
 })
 
 const statusConfig: Record<OrderStatus, { label: string; bg: string; text: string; description: string }> = {
-    Pending:        { label: 'Checking availability…', bg: 'bg-amber-50',  text: 'text-amber-800',  description: 'We are confirming your items are available.' },
-    AwaitingPayment:{ label: 'Awaiting Payment',       bg: 'bg-blue-50',   text: 'text-blue-800',   description: 'Your items are reserved. Complete payment to confirm your booking.' },
-    Confirmed:      { label: 'Confirmed',              bg: 'bg-green-50',  text: 'text-green-800',  description: 'Your booking is confirmed. We look forward to making your event special.' },
-    Completed:      { label: 'Completed',              bg: 'bg-cream-dark',text: 'text-brown-mid',  description: 'This order has been completed. Thank you for choosing Teacup Boutique.' },
-    Cancelled:      { label: 'Cancelled',              bg: 'bg-red-50',    text: 'text-red-800',    description: 'This order was cancelled.' },
-    OutOfStock:     { label: 'Out of Stock',           bg: 'bg-orange-50', text: 'text-orange-800', description: 'Sorry, one or more items became unavailable. Please try again with different dates or items.' },
+    Pending:             { label: 'Checking availability…', bg: 'bg-amber-50',  text: 'text-amber-800',  description: 'We are confirming your items are available.' },
+    AwaitingPayment:     { label: 'Awaiting Payment',       bg: 'bg-blue-50',   text: 'text-blue-800',   description: 'Your items are reserved. Complete payment to confirm your booking.' },
+    Confirmed:           { label: 'Confirmed',              bg: 'bg-green-50',  text: 'text-green-800',  description: 'Your booking is confirmed. We look forward to making your event special.' },
+    Completed:           { label: 'Completed',              bg: 'bg-cream-dark',text: 'text-brown-mid',  description: 'This order has been completed. Thank you for choosing Teacup Boutique.' },
+    Cancelled:           { label: 'Cancelled',              bg: 'bg-red-50',    text: 'text-red-800',    description: 'This order was cancelled.' },
+    OutOfStock:          { label: 'Out of Stock',           bg: 'bg-orange-50', text: 'text-orange-800', description: 'Sorry, one or more items became unavailable. Please try again with different dates or items.' },
+    PendingMissingItems: { label: 'Pending Missing Items',  bg: 'bg-amber-50',  text: 'text-amber-800',  description: 'Some items were reported missing when your set was returned. Please get in touch or close out below.' },
 }
 
-const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 'OutOfStock']
+const terminalStatuses: OrderStatus[] = ['Confirmed', 'Completed', 'Cancelled', 'OutOfStock', 'PendingMissingItems']
 
 const cancellableStatuses: OrderStatus[] = ['Pending', 'AwaitingPayment', 'Confirmed']
 
@@ -202,8 +203,8 @@ function OrderDetailPage() {
                     </div>
                 )}
 
-                {/* Refund status — shown only for completed or cancelled paid orders */}
-                {(order.status === 'Completed' || order.status === 'Cancelled') && order.paymentStatus === 'Paid' && (
+                {/* Refund status — shown only for completed, cancelled, or pending-missing-items paid orders */}
+                {(order.status === 'Completed' || order.status === 'Cancelled' || order.status === 'PendingMissingItems') && order.paymentStatus === 'Paid' && (
                     <div className="bg-white border border-gold/20 p-6">
                         <h2 className="font-serif text-lg text-brown mb-3">Refund</h2>
                         {order.refundStatus === 'FullyRefunded' && (
@@ -218,6 +219,16 @@ function OrderDetailPage() {
                         {(!order.refundStatus || order.refundStatus === 'None') && (
                             <p className="text-sm text-brown-light">No refund has been issued.</p>
                         )}
+                    </div>
+                )}
+
+                {/* Pending missing items — informational */}
+                {order.status === 'PendingMissingItems' && (
+                    <div className="bg-amber-50 border border-amber-200 p-6 space-y-3">
+                        <h2 className="font-serif text-lg text-amber-900">Missing Items</h2>
+                        <p className="text-sm text-amber-800">
+                            Some items from your set were reported as missing when it was returned. If you still have them, please bring them back as soon as possible. Our team will be in touch to finalise your order and deposit refund.
+                        </p>
                     </div>
                 )}
 

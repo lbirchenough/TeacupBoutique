@@ -74,6 +74,14 @@ export function Navbar() {
                 Bookings
               </Link>
             )}
+            {isAdmin && (
+              <Link
+                to="/maintenance"
+                className="text-sm text-brown-mid hover:text-brown transition-colors"
+              >
+                Maintenance
+              </Link>
+            )}
 
             {/* Cart icon */}
             <Link to="/cart" className="relative text-brown-mid hover:text-brown transition-colors">

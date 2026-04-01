@@ -1,14 +1,2 @@
-using System;
-
-
-using inventory.Entities;
+// This file is intentionally left empty. InventoryItemsDto replaced by ProductSetDto.
 namespace inventory.Models;
-
-public class InventoryItemsDto
-{
-    public Guid Id { get; set; }
-    public Condition Condition { get; set; }
-    public Status Status { get; set; }
-    public string? ConditionNotes { get; set; }
-    public string? MaintenanceHistory { get; set; }
-}

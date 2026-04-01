@@ -26,6 +26,7 @@ public class Booking
 
     public string? Notes { get; set; }
     public string? CompletionNotes { get; set; }
+    public DateTime? CleanedAt { get; set; }
     [Column(TypeName = "decimal(10,2)")] public decimal? DepositAmountKept { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
