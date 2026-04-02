@@ -3,10 +3,19 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Clear default restrictions so nginx container IP is trusted as a proxy
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 builder.Services
@@ -125,6 +134,7 @@ builder.Services.AddReverseProxy()
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseCors("SpaDev");
 app.UseAuthentication();
 app.UseRateLimiter();

@@ -1,0 +1,164 @@
+# Production stack — single file, run with:
+#   docker compose -f docker-compose.prod.yml up -d
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  sql-auth:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_MEMORY_LIMIT_MB: "512"
+    env_file:
+      - /opt/teacupboutique/.secrets/sql-auth.env
+    platform: linux/amd64
+    volumes:
+      - sql-auth-data:/var/opt/mssql
+    restart: unless-stopped
+
+  sql-inventory:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_MEMORY_LIMIT_MB: "512"
+    env_file:
+      - /opt/teacupboutique/.secrets/sql-inventory.env
+    platform: linux/amd64
+    volumes:
+      - sql-inventory-data:/var/opt/mssql
+    restart: unless-stopped
+
+  sql-orders:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_MEMORY_LIMIT_MB: "512"
+    env_file:
+      - /opt/teacupboutique/.secrets/sql-orders.env
+    platform: linux/amd64
+    volumes:
+      - sql-orders-data:/var/opt/mssql
+    restart: unless-stopped
+
+  sql-payments:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_MEMORY_LIMIT_MB: "512"
+    env_file:
+      - /opt/teacupboutique/.secrets/sql-payments.env
+    platform: linux/amd64
+    volumes:
+      - sql-payments-data:/var/opt/mssql
+    restart: unless-stopped
+
+  # ── Services ─────────────────────────────────────────────────────────────────
+
+  auth:
+    image: ghcr.io/lbirchenough/teacupboutique-auth:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+      - ClientUrl=https://teacupboutique.lbirchen.com
+    env_file:
+      - /opt/teacupboutique/.secrets/auth.env
+    depends_on:
+      - sql-auth
+      - rabbitmq
+    restart: unless-stopped
+
+  inventory:
+    image: ghcr.io/lbirchenough/teacupboutique-inventory:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    env_file:
+      - /opt/teacupboutique/.secrets/inventory.env
+    depends_on:
+      - sql-inventory
+      - rabbitmq
+    restart: unless-stopped
+
+  orders:
+    image: ghcr.io/lbirchenough/teacupboutique-orders:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    env_file:
+      - /opt/teacupboutique/.secrets/orders.env
+    depends_on:
+      - sql-orders
+      - rabbitmq
+    restart: unless-stopped
+
+  payments:
+    image: ghcr.io/lbirchenough/teacupboutique-payments:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    env_file:
+      - /opt/teacupboutique/.secrets/payments.env
+    depends_on:
+      - sql-payments
+      - rabbitmq
+    restart: unless-stopped
+
+  notifications:
+    image: ghcr.io/lbirchenough/teacupboutique-notifications:latest
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - RabbitMq__Host=rabbitmq
+      - FrontendUrl=https://teacupboutique.lbirchen.com
+    env_file:
+      - /opt/teacupboutique/.secrets/notifications.env
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+  gateway:
+    image: ghcr.io/lbirchenough/teacupboutique-gateway:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - Cors__AllowedOrigins=https://teacupboutique.lbirchen.com
+    env_file:
+      - /opt/teacupboutique/.secrets/gateway.env
+    depends_on:
+      - auth
+      - inventory
+      - orders
+      - payments
+    restart: unless-stopped
+
+  # ── Edge ─────────────────────────────────────────────────────────────────────
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/teacupboutique/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /opt/teacupboutique/.secrets/cloudflare-origin.crt:/etc/nginx/certs/cloudflare-origin.crt:ro
+      - /opt/teacupboutique/.secrets/cloudflare-origin.key:/etc/nginx/certs/cloudflare-origin.key:ro
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-data:
+  sql-auth-data:
+  sql-inventory-data:
+  sql-orders-data:
+  sql-payments-data:

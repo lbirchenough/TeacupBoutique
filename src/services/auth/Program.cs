@@ -100,7 +100,11 @@ if (app.Environment.IsDevelopment())
         try { await db.Database.MigrateAsync(); break; }
         catch { await Task.Delay(3000); }
     }
+}
 
+// Seed roles and admin user in all environments — runs on every startup but is idempotent
+{
+    using var scope = app.Services.CreateScope();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
@@ -113,7 +117,7 @@ if (app.Environment.IsDevelopment())
 
     if (await userManager.FindByEmailAsync(adminEmail) is null)
     {
-        var admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail };
+        var admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
         await userManager.CreateAsync(admin, adminPassword);
         await userManager.AddToRoleAsync(admin, "Admin");
     }

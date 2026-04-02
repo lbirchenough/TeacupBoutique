@@ -1,0 +1,166 @@
+# Local prod smoke-test — mirrors docker-compose.prod.yml but with:
+#   - Local builds instead of GHCR images
+#   - ./.secrets/ env file paths instead of /opt/teacupboutique/.secrets/
+#   - Gateway exposed directly on 8080 instead of nginx (no cert needed)
+#
+# Usage:
+#   docker compose -f docker-compose.prod.local.yml up --build
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"   # management UI for local debugging
+    volumes:
+      - rabbitmq-prod-local-data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  sql-auth:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-auth.env
+    platform: linux/amd64
+    volumes:
+      - sql-auth-prod-local-data:/var/opt/mssql
+    restart: unless-stopped
+
+  sql-inventory:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-inventory.env
+    platform: linux/amd64
+    volumes:
+      - sql-inventory-prod-local-data:/var/opt/mssql
+    restart: unless-stopped
+
+  sql-orders:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-orders.env
+    platform: linux/amd64
+    volumes:
+      - sql-orders-prod-local-data:/var/opt/mssql
+    restart: unless-stopped
+
+  sql-payments:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+    env_file:
+      - ./.secrets/sql-payments.env
+    platform: linux/amd64
+    volumes:
+      - sql-payments-prod-local-data:/var/opt/mssql
+    restart: unless-stopped
+
+  # ── Services ─────────────────────────────────────────────────────────────────
+
+  auth:
+    build:
+      context: .
+      dockerfile: src/services/auth/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+      - ClientUrl=http://localhost:5173
+    env_file:
+      - ./.secrets/auth.env
+    depends_on:
+      - sql-auth
+      - rabbitmq
+    restart: unless-stopped
+
+  inventory:
+    build:
+      context: .
+      dockerfile: src/services/inventory/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    env_file:
+      - ./.secrets/inventory.env
+    depends_on:
+      - sql-inventory
+      - rabbitmq
+    restart: unless-stopped
+
+  orders:
+    build:
+      context: .
+      dockerfile: src/services/orders/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    env_file:
+      - ./.secrets/orders.env
+    depends_on:
+      - sql-orders
+      - rabbitmq
+    restart: unless-stopped
+
+  payments:
+    build:
+      context: .
+      dockerfile: src/services/payments/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - RabbitMq__Host=rabbitmq
+    env_file:
+      - ./.secrets/payments.env
+    depends_on:
+      - sql-payments
+      - rabbitmq
+    restart: unless-stopped
+
+  notifications:
+    build:
+      context: .
+      dockerfile: src/services/notifications/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - RabbitMq__Host=rabbitmq
+      - FrontendUrl=http://localhost:5173
+    env_file:
+      - ./.secrets/notifications.env
+    depends_on:
+      - rabbitmq
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/gateway/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - Cors__AllowedOrigins=http://localhost:5173
+    env_file:
+      - ./.secrets/gateway.env
+    ports:
+      - "5054:8080"
+    depends_on:
+      - auth
+      - inventory
+      - orders
+      - payments
+    restart: unless-stopped
+
+volumes:
+  rabbitmq-prod-local-data:
+  sql-auth-prod-local-data:
+  sql-inventory-prod-local-data:
+  sql-orders-prod-local-data:
+  sql-payments-prod-local-data:
