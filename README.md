@@ -463,6 +463,183 @@ Manages all interconnected Azure resources as code. Benefits:
 
 ---
 
+---
+
+# Production Deployment Setup
+
+This section documents the one-time setup steps required to get the production stack running on an Azure VM behind Cloudflare.
+
+---
+
+## 1. Provision the Azure VM
+
+1. Create a VM in the Azure portal (B2als v2 or equivalent — 2 vCPU, 4GB RAM minimum given 4x SQL Server containers)
+2. Choose Ubuntu as the OS
+3. Enable SSH public key authentication — save the private key
+4. Under **Networking**, add inbound NSG rules:
+   - Port **22** (SSH) — already added by default
+   - Port **80** (HTTP) — for nginx redirect to HTTPS
+   - Port **443** (HTTPS) — for nginx SSL termination
+
+---
+
+## 2. Install Docker on the VM
+
+SSH into the VM and run:
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+exit
+```
+
+Log back in — Docker Compose v2 is included with the official Docker install, no separate install needed.
+
+---
+
+## 3. Create the Secrets Directory
+
+```bash
+sudo mkdir -p /opt/teacupboutique/.secrets
+sudo chown $USER:$USER /opt/teacupboutique
+```
+
+Populate each secrets file (never committed to the repo):
+
+**`/opt/teacupboutique/.secrets/auth.env`**
+```
+ConnectionStrings__AuthDb=Server=sql-auth,1433;Database=authdb;User Id=SA;Password=...;TrustServerCertificate=true
+Jwt__Key=
+AdminSeed__Email=
+AdminSeed__Password=
+Turnstile__SecretKey=
+```
+
+**`/opt/teacupboutique/.secrets/gateway.env`**
+```
+Jwt__Key=
+```
+
+**`/opt/teacupboutique/.secrets/inventory.env`**
+```
+ConnectionStrings__InventoryDb=Server=sql-inventory,1433;Database=inventorydb;User Id=SA;Password=...;TrustServerCertificate=true
+CLOUDINARY_URL=
+```
+
+**`/opt/teacupboutique/.secrets/orders.env`**
+```
+ConnectionStrings__OrdersDb=Server=sql-orders,1433;Database=ordersdb;User Id=SA;Password=...;TrustServerCertificate=true
+Jwt__Key=
+Turnstile__SecretKey=
+```
+
+**`/opt/teacupboutique/.secrets/payments.env`**
+```
+ConnectionStrings__PaymentsDb=Server=sql-payments,1433;Database=paymentsdb;User Id=SA;Password=...;TrustServerCertificate=true
+Stripe__SecretKey=
+Stripe__WebhookSecret=
+Turnstile__SecretKey=
+```
+
+**`/opt/teacupboutique/.secrets/notifications.env`**
+```
+Mailgun__ApiKey=
+```
+
+**`/opt/teacupboutique/.secrets/sql-auth.env`**
+**`/opt/teacupboutique/.secrets/sql-inventory.env`**
+**`/opt/teacupboutique/.secrets/sql-orders.env`**
+**`/opt/teacupboutique/.secrets/sql-payments.env`**
+```
+MSSQL_SA_PASSWORD=
+```
+
+The SA password in each sql-*.env must match the password in the corresponding service connection string.
+
+---
+
+## 4. Cloudflare DNS and SSL
+
+### DNS Record
+
+In the Cloudflare dashboard for your domain:
+
+- Add an **A record**: Name = `teacupboutique`, Content = VM public IP, Proxy status = **Proxied** (orange cloud)
+
+This routes `teacupboutique.lbirchen.com` through Cloudflare's proxy, hiding the VM's real IP and enabling DDoS protection and CDN caching.
+
+### SSL/TLS Mode
+
+Cloudflare dashboard → your domain → **SSL/TLS** → set mode to **Full (strict)**.
+
+This means:
+- Browser → Cloudflare: HTTPS (Cloudflare's public cert)
+- Cloudflare → VM: HTTPS (Cloudflare Origin Certificate)
+
+Do not use Flexible — it sends HTTP to the VM and causes redirect loops with nginx.
+
+### Cloudflare Origin Certificate
+
+Cloudflare dashboard → **SSL/TLS** → **Origin Server** → **Create Certificate**:
+
+- Key type: RSA
+- Hostnames: `teacupboutique.lbirchen.com`, `*.lbirchen.com` (or just the subdomain)
+- Validity: 15 years
+
+Copy the certificate and private key. Save them on the VM:
+
+```bash
+nano /opt/teacupboutique/.secrets/cloudflare-origin.crt   # paste cert
+nano /opt/teacupboutique/.secrets/cloudflare-origin.key   # paste key
+```
+
+These are mounted read-only into the nginx container via `docker-compose.prod.yml`.
+
+---
+
+## 5. GitHub Actions Secrets
+
+In the repository: **Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | Value |
+|--------|-------|
+| `SSH_HOST` | VM public IP |
+| `SSH_USER` | VM username (e.g. `azureuser`) |
+| `SSH_PRIVATE_KEY` | Private key matching the VM's `authorized_keys` |
+
+The pipeline authenticates to GHCR using `GITHUB_TOKEN` (automatic, no setup needed).
+
+---
+
+## 6. GHCR Authentication on the VM
+
+The VM needs to pull Docker images from GitHub Container Registry. Create a GitHub Personal Access Token (classic) with `read:packages` scope, then on the VM:
+
+```bash
+echo "<PAT>" | docker login ghcr.io -u <github-username> --password-stdin
+```
+
+Alternatively, make all GHCR packages public (safe since images contain no secrets — all secrets are injected at runtime via env files).
+
+---
+
+## 7. Deploy
+
+Push to `main`. GitHub Actions will:
+
+1. Build all service images and push to GHCR
+2. SCP `docker-compose.prod.yml` and `nginx/nginx.conf` to the VM
+3. SSH into the VM, start infrastructure containers, wait for SQL Server to be ready
+4. Run EF Core migrations via the `efbundle` baked into each service image
+5. Bring up all services with `docker compose up -d`
+
+The nginx container handles:
+- Port 80 → 301 redirect to HTTPS
+- Port 443 → SSL termination using the Cloudflare Origin Certificate → proxy to the React client container
+- `/api/*`, `/payments/*`, `/webhooks/*` → proxied to the gateway
+
+---
+
 ## Domain Progression
 
 ### Showcase (V1)
