@@ -53,6 +53,24 @@ function ProductDetailPage() {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['set-items', productId] }),
     })
 
+    const deactivateSetItemMutation = useMutation({
+        mutationFn: (setItemId: string) => inventoryApi.deactivateSetItem(productId, setItemId, accessToken!),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['set-items', productId] })
+            queryClient.invalidateQueries({ queryKey: ['product', productId] })
+            queryClient.invalidateQueries({ queryKey: ['products'] })
+        },
+    })
+
+    const activateSetItemMutation = useMutation({
+        mutationFn: (setItemId: string) => inventoryApi.activateSetItem(productId, setItemId, accessToken!),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['set-items', productId] })
+            queryClient.invalidateQueries({ queryKey: ['product', productId] })
+            queryClient.invalidateQueries({ queryKey: ['products'] })
+        },
+    })
+
     const product = productQuery.data
 
     return (
@@ -123,14 +141,16 @@ function ProductDetailPage() {
                             ) : (
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
                                     <DetailRow label="Description" value={product.description} span />
-                                    {product.contents && <DetailRow label="Contents" value={product.contents} span />}
+                                    {product.contents && <DetailRow label="Contents" value={product.contents.split('\n').filter(Boolean).join(', ')} span />}
                                     {product.colour && <DetailRow label="Colour" value={product.colour} />}
                                     <DetailRow label="Servings" value={product.servings} />
                                     <DetailRow label="Price" value={`$${product.price.toFixed(2)}`} />
                                     <DetailRow label="Deposit" value={`$${product.depositAmount.toFixed(2)}`} />
-                                    <DetailRow label="Min Rental Days" value={product.minRentalDays} />
-                                    <DetailRow label="Max Rental Days" value={product.maxRentalDays} />
-                                    <DetailRow label="Buffer Days" value={product.bufferDays} />
+                                    {isAdmin && <>
+                                        <DetailRow label="Min Rental Days" value={product.minRentalDays} />
+                                        <DetailRow label="Max Rental Days" value={product.maxRentalDays} />
+                                        <DetailRow label="Buffer Days" value={product.bufferDays} />
+                                    </>}
                                 </div>
                             )}
                         </div>
@@ -142,6 +162,8 @@ function ProductDetailPage() {
                                     items={setItemsQuery.data ?? []}
                                     isPending={setItemsQuery.isPending}
                                     addMutation={addSetItemMutation}
+                                    deactivateMutation={deactivateSetItemMutation}
+                                    activateMutation={activateSetItemMutation}
                                 />
                                 <PhysicalSetsSection
                                     sets={setsQuery.data ?? []}
@@ -161,10 +183,14 @@ function ComponentsSection({
     items,
     isPending,
     addMutation,
+    deactivateMutation,
+    activateMutation,
 }: {
     items: SetItemDetail[]
     isPending: boolean
     addMutation: ReturnType<typeof useMutation<unknown, Error, SetItemCreateDto>>
+    deactivateMutation: ReturnType<typeof useMutation<unknown, Error, string>>
+    activateMutation: ReturnType<typeof useMutation<unknown, Error, string>>
 }) {
     const [showForm, setShowForm] = useState(false)
     const [form, setForm] = useState({ name: '', quantity: '1', depositValuePerUnit: '0' })
@@ -206,16 +232,36 @@ function ComponentsSection({
 
             {items.length > 0 && (
                 <div className="mb-4">
-                    <div className="grid grid-cols-3 gap-4 text-xs font-semibold text-brown-light uppercase tracking-widest pb-2 border-b border-gold/10">
+                    <div className="grid grid-cols-4 gap-4 text-xs font-semibold text-brown-light uppercase tracking-widest pb-2 border-b border-gold/10">
                         <span>Name</span>
                         <span className="text-center">Quantity</span>
                         <span className="text-right">Deposit / Unit</span>
+                        <span></span>
                     </div>
                     {items.map(item => (
-                        <div key={item.id} className="grid grid-cols-3 gap-4 py-3 border-b border-gold/10 last:border-0 text-sm">
-                            <span className="text-brown">{item.name}</span>
+                        <div key={item.id} className={`grid grid-cols-4 gap-4 py-3 border-b border-gold/10 last:border-0 text-sm items-center ${!item.isActive ? 'opacity-40' : ''}`}>
+                            <span className="text-brown">{item.name}{!item.isActive && <span className="ml-2 text-xs text-brown-light">(inactive)</span>}</span>
                             <span className="text-brown text-center">{item.quantity}</span>
                             <span className="text-brown text-right">${item.depositValuePerUnit.toFixed(2)}</span>
+                            <span className="text-right">
+                                {item.isActive ? (
+                                    <button
+                                        onClick={() => deactivateMutation.mutate(item.id)}
+                                        disabled={deactivateMutation.isPending}
+                                        className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                                    >
+                                        Deactivate
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => activateMutation.mutate(item.id)}
+                                        disabled={activateMutation.isPending}
+                                        className="text-xs text-gold hover:text-gold/70 transition-colors disabled:opacity-50"
+                                    >
+                                        Activate
+                                    </button>
+                                )}
+                            </span>
                         </div>
                     ))}
                 </div>

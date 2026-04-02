@@ -112,7 +112,7 @@ function MaintenanceCard({ item, onUpdate }: { item: MaintenanceQueueItem; onUpd
     })
 
     const markCleanedMutation = useMutation({
-        mutationFn: () => bookingsApi.markCleaned(item.bookingId),
+        mutationFn: () => bookingsApi.markCleaned(item.productSetId),
         onSuccess: onUpdate,
     })
 
@@ -134,8 +134,7 @@ function MaintenanceCard({ item, onUpdate }: { item: MaintenanceQueueItem; onUpd
         },
     })
 
-    const allComponentsDone = item.components.every(c => c.isReplaced)
-    const canComplete = allComponentsDone && item.isCleaned
+    const canComplete = item.components.length === 0 && item.isCleaned
 
     return (
         <div className="bg-white border border-gold/20 p-6 space-y-5">
@@ -189,9 +188,7 @@ function MaintenanceCard({ item, onUpdate }: { item: MaintenanceQueueItem; onUpd
                                         {' · '}spare stock: {comp.spareStockAvailable}
                                     </p>
                                 </div>
-                                {comp.isReplaced ? (
-                                    <span className="text-xs bg-green-50 text-green-700 px-2 py-1">✓ Replaced</span>
-                                ) : comp.spareStockAvailable >= (comp.totalDamaged + comp.totalMissing) ? (
+                                {comp.spareStockAvailable >= (comp.totalDamaged + comp.totalMissing) ? (
                                     <button
                                         onClick={() => markReplacedMutation.mutate(comp.setItemId)}
                                         disabled={markReplacedMutation.isPending}
@@ -203,7 +200,7 @@ function MaintenanceCard({ item, onUpdate }: { item: MaintenanceQueueItem; onUpd
                                     <span className="text-xs bg-red-50 text-red-600 px-2 py-1">No spare stock</span>
                                 )}
                             </div>
-                            {!comp.isReplaced && comp.spareStockAvailable < (comp.totalDamaged + comp.totalMissing) && (
+                            {comp.spareStockAvailable < (comp.totalDamaged + comp.totalMissing) && (
                                 <div className="mt-2 pt-2 border-t border-gold/10">
                                     {addStockSetItemId === comp.setItemId ? (
                                         <div className="flex items-center gap-2">
@@ -277,9 +274,9 @@ function MaintenanceCard({ item, onUpdate }: { item: MaintenanceQueueItem; onUpd
                     </div>
                 ) : (
                     <p className="text-xs text-brown-light italic">
-                        {!allComponentsDone && !item.isCleaned
+                        {item.components.length > 0 && !item.isCleaned
                             ? 'Mark all components replaced and set as cleaned to release.'
-                            : !allComponentsDone
+                            : item.components.length > 0
                                 ? 'Mark all components replaced to release.'
                                 : 'Mark set as cleaned to release.'}
                     </p>

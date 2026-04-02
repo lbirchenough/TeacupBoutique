@@ -22,6 +22,7 @@ function BookingsPage() {
     const { data: bookings, isPending, isError } = useQuery<BookingListItem[]>({
         queryKey: ['bookings'],
         queryFn: bookingsApi.getBookings,
+        refetchOnMount: 'always',
     })
 
     if (isPending) return (

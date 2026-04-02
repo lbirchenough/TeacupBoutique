@@ -20,4 +20,5 @@ public class BookingItem
     public ProductSet? ProductSet { get; set; }
     public Product? Product { get; set; }
     public List<ReturnAssessment>? ReturnAssessments { get; set; }
+    public List<BookingItemComponent>? Components { get; set; }
 }

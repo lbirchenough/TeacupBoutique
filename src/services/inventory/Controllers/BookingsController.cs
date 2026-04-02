@@ -52,13 +52,14 @@ namespace inventory.Controllers
             var booking = await _context.Bookings
                 .Include(b => b.BookingItems!)
                     .ThenInclude(bi => bi.ProductSet)
+                .Include(b => b.BookingItems!)
+                    .ThenInclude(bi => bi.Components!)
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking is null) return NotFound();
             if (booking.Status != BookingStatus.CheckedOut)
                 return BadRequest("Booking must be CheckedOut before marking as returned.");
 
-            // Validate totals and load set items for deposit calculation
             var setItemIds = request.Items
                 .SelectMany(i => i.Components.Select(c => c.SetItemId))
                 .Distinct()
@@ -75,12 +76,13 @@ namespace inventory.Controllers
 
                 foreach (var component in itemAssessment.Components)
                 {
-                    if (!setItems.TryGetValue(component.SetItemId, out var setItem))
-                        return BadRequest($"SetItem {component.SetItemId} not found.");
+                    var snapshot = bookingItem.Components?.FirstOrDefault(c => c.SetItemId == component.SetItemId);
+                    if (snapshot is null)
+                        return BadRequest($"BookingItemComponent for SetItem {component.SetItemId} not found.");
 
                     var total = component.QuantityGood + component.QuantityDamaged + component.QuantityMissing;
-                    if (total != setItem.Quantity)
-                        return BadRequest($"Quantities for {setItem.Name} must sum to {setItem.Quantity} (got {total}).");
+                    if (total != snapshot.Quantity)
+                        return BadRequest($"Quantities for {snapshot.Name} must sum to {snapshot.Quantity} (got {total}).");
 
                     _context.ReturnAssessments.Add(new ReturnAssessment
                     {
@@ -97,35 +99,34 @@ namespace inventory.Controllers
                 bookingItem.UpdatedAt = DateTime.UtcNow;
             }
 
-            // Set all ProductSets to Maintenance
             foreach (var bookingItem in booking.BookingItems!)
             {
                 if (bookingItem.ProductSet is not null)
+                {
                     bookingItem.ProductSet.Status = Status.Maintenance;
+                    bookingItem.ProductSet.CleanedAt = null;
+                }
             }
 
             booking.Status = BookingStatus.Returned;
             booking.ReturnedAt = DateTime.UtcNow;
             booking.UpdatedAt = DateTime.UtcNow;
 
-            // Calculate refund: depositTotal - deductions for damaged/missing items
-            // Deduction = QuantityDamaged * DepositValuePerUnit + QuantityMissing * DepositValuePerUnit
             decimal totalDeduction = request.Items
                 .SelectMany(i => i.Components)
-                .Sum(c => setItems.TryGetValue(c.SetItemId, out var si)
-                    ? (c.QuantityDamaged + c.QuantityMissing) * si.DepositValuePerUnit
-                    : 0m);
+                .Sum(c =>
+                {
+                    var snapshot = booking.BookingItems!
+                        .SelectMany(bi => bi.Components ?? [])
+                        .FirstOrDefault(comp => comp.SetItemId == c.SetItemId);
+                    return snapshot is not null
+                        ? (c.QuantityDamaged + c.QuantityMissing) * snapshot.DepositValuePerUnit
+                        : 0m;
+                });
 
-            // Get the booking's deposit total from the order service via the booking items count
-            // We calculate deposit from SetItems: sum of (Quantity * DepositValuePerUnit) for all items in the ProductSet
-            var productIds = booking.BookingItems.Select(bi => bi.ProductId).Distinct().ToList();
-            var allSetItems = await _context.SetItems
-                .Where(si => productIds.Contains(si.ProductId))
-                .ToListAsync();
-
-            decimal depositTotal = booking.BookingItems.Sum(bi =>
-                allSetItems.Where(si => si.ProductId == bi.ProductId)
-                           .Sum(si => si.Quantity * si.DepositValuePerUnit));
+            decimal depositTotal = booking.BookingItems
+                .SelectMany(bi => bi.Components ?? [])
+                .Sum(c => c.Quantity * c.DepositValuePerUnit);
 
             decimal refundAmount = Math.Max(0, depositTotal - totalDeduction);
             booking.DepositAmountKept = totalDeduction;
@@ -214,35 +215,31 @@ namespace inventory.Controllers
             var booking = await _context.Bookings
                 .Include(b => b.BookingItems!)
                     .ThenInclude(bi => bi.ReturnAssessments)
+                .Include(b => b.BookingItems!)
+                    .ThenInclude(bi => bi.Components!)
                 .FirstOrDefaultAsync(b => b.Id == id);
 
             if (booking is null) return NotFound();
             if (booking.Status != BookingStatus.Returned)
                 return BadRequest("Booking must be Returned before completing.");
 
-            // Load set items to calculate refund
             var assessments = booking.BookingItems!
                 .SelectMany(bi => bi.ReturnAssessments ?? [])
                 .ToList();
 
-            var setItemIds = assessments.Select(ra => ra.SetItemId).Distinct().ToList();
-            var setItemsDict = await _context.SetItems
-                .Where(si => setItemIds.Contains(si.Id))
-                .ToDictionaryAsync(si => si.Id);
-
-            var productIds = booking.BookingItems!.Select(bi => bi.ProductId).Distinct().ToList();
-            var allSetItems = await _context.SetItems
-                .Where(si => productIds.Contains(si.ProductId))
-                .ToListAsync();
-
-            decimal depositTotal = booking.BookingItems!.Sum(bi =>
-                allSetItems.Where(si => si.ProductId == bi.ProductId)
-                           .Sum(si => si.Quantity * si.DepositValuePerUnit));
+            decimal depositTotal = booking.BookingItems!
+                .SelectMany(bi => bi.Components ?? [])
+                .Sum(c => c.Quantity * c.DepositValuePerUnit);
 
             decimal totalDeduction = assessments.Sum(ra =>
-                setItemsDict.TryGetValue(ra.SetItemId, out var si)
-                    ? (ra.QuantityDamaged + Math.Max(0, ra.QuantityMissing - ra.QuantityCustomerReturned)) * si.DepositValuePerUnit
-                    : 0m);
+            {
+                var snapshot = booking.BookingItems!
+                    .SelectMany(bi => bi.Components ?? [])
+                    .FirstOrDefault(c => c.SetItemId == ra.SetItemId);
+                return snapshot is not null
+                    ? (ra.QuantityDamaged + Math.Max(0, ra.QuantityMissing - ra.QuantityCustomerReturned)) * snapshot.DepositValuePerUnit
+                    : 0m;
+            });
 
             decimal refundAmount = Math.Max(0, depositTotal - totalDeduction);
 
@@ -279,17 +276,16 @@ namespace inventory.Controllers
             if (productSet.Status != Status.Maintenance)
                 return BadRequest("Set is not in maintenance.");
 
-            var booking = productSet.BookingItems?
-                .Where(bi => bi.Booking != null)
-                .OrderByDescending(bi => bi.Booking!.ReturnedAt)
-                .Select(bi => bi.Booking!)
-                .FirstOrDefault();
-
-            if (booking?.CleanedAt is null)
+            if (productSet.CleanedAt is null)
                 return BadRequest("Set must be marked as cleaned before releasing.");
 
+            var mostRecentBookingItem = productSet.BookingItems?
+                .Where(bi => bi.Booking != null)
+                .OrderByDescending(bi => bi.Booking!.ReturnedAt)
+                .FirstOrDefault();
+
             var unreplaced = productSet.BookingItems!
-                .Where(bi => bi.BookingId == booking.Id)
+                .Where(bi => bi.BookingId == mostRecentBookingItem?.BookingId)
                 .SelectMany(bi => bi.ReturnAssessments ?? [])
                 .Where(ra => ra.ReplacedAt is null && (ra.QuantityDamaged + ra.QuantityMissing) > 0)
                 .ToList();
@@ -298,6 +294,7 @@ namespace inventory.Controllers
                 return BadRequest("All components must be marked as replaced before releasing.");
 
             productSet.Status = Status.Available;
+            productSet.CleanedAt = null;
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -306,6 +303,8 @@ namespace inventory.Controllers
         public async Task<IActionResult> GetMaintenanceDetail(Guid id)
         {
             var booking = await _context.Bookings
+                .Include(b => b.BookingItems!)
+                    .ThenInclude(bi => bi.Components!)
                 .Include(b => b.BookingItems!)
                     .ThenInclude(bi => bi.ReturnAssessments!)
                         .ThenInclude(ra => ra.SetItem!)
@@ -340,10 +339,13 @@ namespace inventory.Controllers
                 .Select(g =>
                 {
                     var first = g.First();
+                    var snapshot = booking.BookingItems!
+                        .SelectMany(bi => bi.Components ?? [])
+                        .FirstOrDefault(c => c.SetItemId == g.Key);
                     return new
                     {
                         SetItemId = g.Key,
-                        SetItemName = first.SetItem?.Name,
+                        SetItemName = snapshot?.Name ?? first.SetItem?.Name,
                         TotalDamaged = g.Sum(ra => ra.QuantityDamaged),
                         TotalMissing = g.Sum(ra => ra.QuantityMissing),
                         SpareStockAvailable = first.SetItem?.SpareStock?.QuantityAvailable ?? 0,
@@ -365,13 +367,13 @@ namespace inventory.Controllers
             });
         }
 
-        [HttpPost("{id:guid}/maintenance/mark-cleaned")]
-        public async Task<IActionResult> MarkCleaned(Guid id)
+        [HttpPost("/api/maintenance/{productSetId:guid}/mark-cleaned")]
+        public async Task<IActionResult> MarkCleaned(Guid productSetId)
         {
-            var booking = await _context.Bookings.FindAsync(id);
-            if (booking is null) return NotFound();
+            var productSet = await _context.ProductSets.FindAsync(productSetId);
+            if (productSet is null) return NotFound();
 
-            booking.CleanedAt = DateTime.UtcNow;
+            productSet.CleanedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -384,6 +386,8 @@ namespace inventory.Controllers
                 .Include(ps => ps.Product)
                 .Include(ps => ps.BookingItems!)
                     .ThenInclude(bi => bi.Booking)
+                .Include(ps => ps.BookingItems!)
+                    .ThenInclude(bi => bi.Components!)
                 .Include(ps => ps.BookingItems!)
                     .ThenInclude(bi => bi.ReturnAssessments!)
                         .ThenInclude(ra => ra.SetItem!)
@@ -418,6 +422,10 @@ namespace inventory.Controllers
                     .SelectMany(bi => bi.ReturnAssessments ?? [])
                     .ToList() ?? [];
 
+                var allComponents = ps.BookingItems?
+                    .SelectMany(bi => bi.Components ?? [])
+                    .ToList() ?? [];
+
                 var upcoming = upcomingItems
                     .Where(u => u.ProductSetId == ps.Id)
                     .Select(u => new
@@ -429,19 +437,19 @@ namespace inventory.Controllers
                     .ToList();
 
                 var components = allAssessments
-                    .Where(ra => ra.QuantityDamaged + ra.QuantityMissing > 0)
+                    .Where(ra => ra.QuantityDamaged + ra.QuantityMissing > 0 && ra.ReplacedAt == null)
                     .GroupBy(ra => ra.SetItemId)
                     .Select(g =>
                     {
                         var first = g.First();
+                        var snapshot = allComponents.FirstOrDefault(c => c.SetItemId == g.Key);
                         return new
                         {
                             SetItemId = g.Key,
-                            SetItemName = first.SetItem?.Name,
+                            SetItemName = snapshot?.Name ?? first.SetItem?.Name,
                             TotalDamaged = g.Sum(ra => ra.QuantityDamaged),
                             TotalMissing = g.Sum(ra => ra.QuantityMissing),
                             SpareStockAvailable = first.SetItem?.SpareStock?.QuantityAvailable ?? 0,
-                            IsReplaced = g.All(ra => ra.ReplacedAt != null)
                         };
                     })
                     .ToList();
@@ -454,7 +462,7 @@ namespace inventory.Controllers
                     ProductName = ps.Product?.Name,
                     BookingId = booking?.Id,
                     ReturnedAt = booking?.ReturnedAt,
-                    IsCleaned = booking?.CleanedAt != null,
+                    IsCleaned = ps.CleanedAt != null,
                     Components = components,
                     UpcomingBookings = upcoming,
                     NextBookingDays = upcoming.Any() ? (int?)upcoming.Min(u => u.DaysUntil) : null
@@ -566,6 +574,8 @@ namespace inventory.Controllers
                 .Include(b => b.BookingItems!)
                     .ThenInclude(bi => bi.ProductSet)
                 .Include(b => b.BookingItems!)
+                    .ThenInclude(bi => bi.Components!)
+                .Include(b => b.BookingItems!)
                     .ThenInclude(bi => bi.ReturnAssessments!)
                         .ThenInclude(ra => ra.SetItem)
                 .AsNoTracking()
@@ -574,17 +584,10 @@ namespace inventory.Controllers
             if (booking is null)
                 return NotFound();
 
-            var productIds = booking.BookingItems!.Select(bi => bi.ProductId).Distinct().ToList();
-            var setItems = await _context.SetItems
-                .Where(si => productIds.Contains(si.ProductId))
-                .AsNoTracking()
-                .ToListAsync();
-
-            var setItemsByProduct = setItems
-                .GroupBy(si => si.ProductId)
+            var setItemsByBookingItem = booking.BookingItems!
                 .ToDictionary(
-                    g => g.Key,
-                    g => g.Select(si => new { si.Id, si.Name, si.Quantity, si.DepositValuePerUnit }).ToList()
+                    bi => bi.Id,
+                    bi => (bi.Components ?? []).Select(c => new { Id = c.SetItemId, c.Name, c.Quantity, c.DepositValuePerUnit }).ToList()
                 );
 
             var result = new
@@ -601,7 +604,7 @@ namespace inventory.Controllers
                 booking.Notes,
                 booking.CreatedAt,
                 booking.DepositAmountKept,
-                SetItemsByProduct = setItemsByProduct,
+                SetItemsByBookingItem = setItemsByBookingItem,
                 BookingItems = booking.BookingItems!.Select(bi => new
                 {
                     bi.Id,
@@ -614,6 +617,13 @@ namespace inventory.Controllers
                     ProductColour = bi.Product.Colour,
                     ProductSetId = bi.ProductSetId,
                     ProductSetName = bi.ProductSet?.Name,
+                    Components = bi.Components?.Select(c => new
+                    {
+                        c.SetItemId,
+                        c.Name,
+                        c.Quantity,
+                        c.DepositValuePerUnit
+                    }),
                     ReturnAssessments = bi.ReturnAssessments?.Select(ra => new
                     {
                         ra.Id,

@@ -15,6 +15,7 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<ReturnAssessment> ReturnAssessments { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<BookingItem> BookingItems { get; set; }
+    public DbSet<BookingItemComponent> BookingItemComponents { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +41,18 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             .HasOne(bi => bi.ProductSet)
             .WithMany(ps => ps.BookingItems)
             .HasForeignKey("ProductSetId")
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<BookingItemComponent>()
+            .HasOne(c => c.BookingItem)
+            .WithMany(bi => bi.Components)
+            .HasForeignKey(c => c.BookingItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<BookingItemComponent>()
+            .HasOne(c => c.SetItem)
+            .WithMany()
+            .HasForeignKey(c => c.SetItemId)
             .OnDelete(DeleteBehavior.NoAction);
 
         // SpareStock: one per SetItem (unique constraint)
@@ -74,25 +87,25 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
         // Product 5: Royal Style Fine China Set (deposit=140, servings=6)
         modelBuilder.Entity<SetItem>().HasData(
             // Product 1 — sum: 25 + 48 + 7 = 80
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333301"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 25.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333302"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Teacups & Saucers", Quantity = 6, DepositValuePerUnit = 8.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333303"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 7.00m },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333301"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 25.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333302"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Teacups & Saucers", Quantity = 6, DepositValuePerUnit = 8.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333303"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 7.00m, IsActive = true },
             // Product 2 — sum: 30 + 40 + 30 = 100
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333304"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 30.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333305"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Teacups & Saucers", Quantity = 4, DepositValuePerUnit = 10.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333306"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 30.00m },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333304"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 30.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333305"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Teacups & Saucers", Quantity = 4, DepositValuePerUnit = 10.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333306"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 30.00m, IsActive = true },
             // Product 3 — sum: 30 + 64 + 26 = 120
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333307"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 30.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333308"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Teacups & Saucers", Quantity = 8, DepositValuePerUnit = 8.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333309"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 26.00m },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333307"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 30.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333308"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Teacups & Saucers", Quantity = 8, DepositValuePerUnit = 8.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333309"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 26.00m, IsActive = true },
             // Product 4 — sum: 25 + 32 + 13 = 70
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333310"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 25.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333311"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Teacups & Saucers", Quantity = 4, DepositValuePerUnit = 8.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333312"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 13.00m },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333310"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 25.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333311"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Teacups & Saucers", Quantity = 4, DepositValuePerUnit = 8.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333312"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 13.00m, IsActive = true },
             // Product 5 — sum: 35 + 72 + 33 = 140
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333313"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 35.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333314"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Teacups & Saucers", Quantity = 6, DepositValuePerUnit = 12.00m },
-            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333315"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Plates & Accessories", Quantity = 1, DepositValuePerUnit = 33.00m }
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333313"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 35.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333314"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Teacups & Saucers", Quantity = 6, DepositValuePerUnit = 12.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333315"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Plates & Accessories", Quantity = 1, DepositValuePerUnit = 33.00m, IsActive = true }
         );
     }
 

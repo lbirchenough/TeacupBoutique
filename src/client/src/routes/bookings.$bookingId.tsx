@@ -26,7 +26,7 @@ function calcDeduction(assessmentState: ItemAssessmentState, booking: BookingDet
     let deduction = 0
     for (const [, components] of Object.entries(assessmentState)) {
         for (const [setItemId, counts] of Object.entries(components)) {
-            const setItems = Object.values(booking.setItemsByProduct ?? {}).flat()
+            const setItems = Object.values(booking.setItemsByBookingItem ?? {}).flat()
             const setItem = setItems.find(si => si.id === setItemId)
             if (setItem) {
                 deduction += (counts.damaged + counts.missing) * setItem.depositValuePerUnit
@@ -37,16 +37,16 @@ function calcDeduction(assessmentState: ItemAssessmentState, booking: BookingDet
 }
 
 function calcDepositTotal(booking: BookingDetail): number {
-    if (!booking.setItemsByProduct) return 0
+    if (!booking.setItemsByBookingItem) return 0
     return booking.bookingItems.reduce((total, bi) => {
-        const items = booking.setItemsByProduct![bi.productId] ?? []
+        const items = booking.setItemsByBookingItem![bi.id] ?? []
         return total + items.reduce((sum, si) => sum + si.quantity * si.depositValuePerUnit, 0)
     }, 0)
 }
 
 function calcCompletionRefund(booking: BookingDetail): { depositTotal: number; deduction: number; refund: number } {
     const depositTotal = calcDepositTotal(booking)
-    const allSetItems = Object.values(booking.setItemsByProduct ?? {}).flat()
+    const allSetItems = Object.values(booking.setItemsByBookingItem ?? {}).flat()
     let deduction = 0
     for (const bi of booking.bookingItems) {
         for (const ra of bi.returnAssessments ?? []) {
@@ -99,7 +99,7 @@ function BookingDetailPage() {
         mutationFn: () => {
             const items: BookingItemAssessmentDto[] = booking!.bookingItems.map(bi => ({
                 bookingItemId: bi.id,
-                components: (booking!.setItemsByProduct?.[bi.productId] ?? []).map(si => {
+                components: (booking!.setItemsByBookingItem?.[bi.id] ?? []).map(si => {
                     const counts = assessmentState[bi.id]?.[si.id] ?? { good: si.quantity, damaged: 0, missing: 0 }
                     return {
                         setItemId: si.id,
@@ -186,7 +186,7 @@ function BookingDetailPage() {
 
     // Validate totals are correct for all items
     const allTotalsValid = !showReturnForm || booking.bookingItems.every(bi => {
-        const setItems = booking.setItemsByProduct?.[bi.productId] ?? []
+        const setItems = booking.setItemsByBookingItem?.[bi.id] ?? []
         return setItems.every(si => {
             const counts = assessmentState[bi.id]?.[si.id] ?? { good: si.quantity, damaged: 0, missing: 0 }
             return counts.good + counts.damaged + counts.missing === si.quantity
@@ -197,7 +197,7 @@ function BookingDetailPage() {
         const initial: ItemAssessmentState = {}
         booking.bookingItems.forEach(bi => {
             initial[bi.id] = {}
-            const setItems = booking.setItemsByProduct?.[bi.productId] ?? []
+            const setItems = booking.setItemsByBookingItem?.[bi.id] ?? []
             setItems.forEach(si => {
                 initial[bi.id][si.id] = { good: si.quantity, damaged: 0, missing: 0 }
             })
@@ -210,9 +210,7 @@ function BookingDetailPage() {
     const updateCount = (bookingItemId: string, setItemId: string, field: keyof ComponentAssessment, value: number) => {
         setAssessmentState(prev => {
             const biState = prev[bookingItemId] ?? {}
-            const si = booking.setItemsByProduct?.[
-                booking.bookingItems.find(bi => bi.id === bookingItemId)?.productId ?? ''
-            ]?.find(s => s.id === setItemId)
+            const si = booking.setItemsByBookingItem?.[bookingItemId]?.find(s => s.id === setItemId)
             if (!si) return prev
             const current = biState[setItemId] ?? { good: si.quantity, damaged: 0, missing: 0 }
             const updated = { ...current, [field]: Math.max(0, value) }
@@ -515,7 +513,7 @@ function BookingDetailPage() {
                             </div>
 
                             {booking.bookingItems.map(bi => {
-                                const setItems: SetItemDetail[] = booking.setItemsByProduct?.[bi.productId] ?? []
+                                const setItems: SetItemDetail[] = booking.setItemsByBookingItem?.[bi.id] ?? []
                                 return (
                                     <div key={bi.id} className="border border-gold/20 p-4 space-y-4">
                                         <div>

@@ -17,10 +17,9 @@ namespace inventory.Controllers
             {
                 Name = dto.Name,
                 Description = dto.Description,
-                Contents = dto.Contents,
                 Colour = dto.Colour,
                 Price = dto.Price,
-                DepositAmount = dto.DepositAmount,
+                Contents = null,
                 CreatedAt = DateTime.UtcNow,
                 MinRentalDays = dto.MinRentalDays,
                 MaxRentalDays = dto.MaxRentalDays,
@@ -39,25 +38,26 @@ namespace inventory.Controllers
         public async Task<IActionResult> GetProducts()
         {
             var products = await _context.Products
-                .Select(p => new ProductListDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Colour = p.Colour,
-                    Price = p.Price,
-                    DepositAmount = p.DepositAmount,
-                    Servings = p.Servings,
-                    Contents = p.Contents,
-                    FeaturedPhotoUrl = p.Photos
-                        .Where(ph => ph.IsFeatured)
-                        .Select(ph => ph.Url)
-                        .FirstOrDefault()
-                })
+                .Include(p => p.SetItems!.Where(si => si.IsActive))
+                .Include(p => p.Photos)
                 .AsNoTracking()
                 .ToListAsync();
 
-            return Ok(products);
+            return Ok(products.Select(p => new ProductListDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Colour = p.Colour,
+                Price = p.Price,
+                DepositAmount = p.SetItems!.Sum(si => si.Quantity * si.DepositValuePerUnit),
+                Servings = p.Servings,
+                Contents = p.SetItems!.Any() ? string.Join('\n', p.SetItems!.Select(si => $"{si.Quantity} x {si.Name}")) : null,
+                FeaturedPhotoUrl = p.Photos?
+                    .Where(ph => ph.IsFeatured)
+                    .Select(ph => ph.Url)
+                    .FirstOrDefault()
+            }));
         }
 
         [HttpGet("{productId}")]
@@ -65,34 +65,35 @@ namespace inventory.Controllers
         {
             var product = await _context.Products
                 .Where(p => p.Id == productId)
-                .Select(p => new ProductDetailDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Contents = p.Contents,
-                    Colour = p.Colour,
-                    Price = p.Price,
-                    DepositAmount = p.DepositAmount,
-                    Servings = p.Servings,
-                    MinRentalDays = p.MinRentalDays,
-                    MaxRentalDays = p.MaxRentalDays,
-                    BufferDays = p.BufferDays,
-                    IsActive = p.IsActive,
-                    Photos = p.Photos!.Select(ph => new ProductPhotoDto
-                    {
-                        Id = ph.Id,
-                        Url = ph.Url,
-                        IsFeatured = ph.IsFeatured,
-                        DisplayOrder = ph.DisplayOrder
-                    }).ToList()
-                })
+                .Include(p => p.SetItems!.Where(si => si.IsActive))
+                .Include(p => p.Photos)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
             if (product == null) return NotFound();
 
-            return Ok(product);
+            return Ok(new ProductDetailDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Contents = product.SetItems!.Any() ? string.Join('\n', product.SetItems!.Select(si => $"{si.Quantity} x {si.Name}")) : null,
+                Colour = product.Colour,
+                Price = product.Price,
+                DepositAmount = product.SetItems!.Sum(si => si.Quantity * si.DepositValuePerUnit),
+                Servings = product.Servings,
+                MinRentalDays = product.MinRentalDays,
+                MaxRentalDays = product.MaxRentalDays,
+                BufferDays = product.BufferDays,
+                IsActive = product.IsActive,
+                Photos = product.Photos?.Select(ph => new ProductPhotoDto
+                {
+                    Id = ph.Id,
+                    Url = ph.Url,
+                    IsFeatured = ph.IsFeatured,
+                    DisplayOrder = ph.DisplayOrder
+                }).ToList() ?? []
+            });
         }
 
         [HttpPut("{productId}")]
@@ -110,12 +111,10 @@ namespace inventory.Controllers
             product.Colour = updateDto.Colour;
             product.Price = updateDto.Price;
             product.Servings = updateDto.Servings;
-            product.DepositAmount = updateDto.DepositAmount;
             product.MinRentalDays = updateDto.MinRentalDays;
             product.MaxRentalDays = updateDto.MaxRentalDays;
             product.BufferDays = updateDto.BufferDays;
             product.IsActive = updateDto.IsActive;
-            product.Contents = updateDto.Contents;
 
             await _context.SaveChangesAsync();
 
@@ -192,7 +191,8 @@ namespace inventory.Controllers
                     si.Name,
                     si.Quantity,
                     si.DepositValuePerUnit,
-                    SpareStock = si.SpareStock != null ? si.SpareStock.QuantityAvailable : 0
+                    SpareStock = si.SpareStock != null ? si.SpareStock.QuantityAvailable : 0,
+                    si.IsActive
                 })
                 .AsNoTracking()
                 .ToListAsync();
@@ -232,6 +232,32 @@ namespace inventory.Controllers
             return StatusCode(StatusCodes.Status201Created);
         }
 
+        [HttpDelete("{productId}/set-items/{setItemId}")]
+        public async Task<IActionResult> DeactivateSetItem(Guid productId, Guid setItemId)
+        {
+            var setItem = await _context.SetItems
+                .FirstOrDefaultAsync(si => si.Id == setItemId && si.ProductId == productId);
+
+            if (setItem is null) return NotFound();
+
+            setItem.IsActive = false;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        [HttpPut("{productId}/set-items/{setItemId}/activate")]
+        public async Task<IActionResult> ActivateSetItem(Guid productId, Guid setItemId)
+        {
+            var setItem = await _context.SetItems
+                .FirstOrDefaultAsync(si => si.Id == setItemId && si.ProductId == productId);
+
+            if (setItem is null) return NotFound();
+
+            setItem.IsActive = true;
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
         [HttpGet("availability")]
         public async Task<IActionResult> GetAvailability([FromQuery] DateOnly date)
         {
@@ -242,7 +268,7 @@ namespace inventory.Controllers
                     p.Id,
                     p.Name,
                     p.Price,
-                    p.DepositAmount,
+                    DepositAmount = p.SetItems!.Where(si => si.IsActive).Sum(si => si.Quantity * si.DepositValuePerUnit),
                     p.Servings,
                     FeaturedPhotoUrl = p.Photos
                         .Where(ph => ph.IsFeatured)

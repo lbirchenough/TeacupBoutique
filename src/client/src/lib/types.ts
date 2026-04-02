@@ -47,15 +47,14 @@ export interface SetItemDetail {
     quantity: number;
     depositValuePerUnit: number;
     spareStock: number;
+    isActive: boolean;
 }
 
 export interface ProductCreateDto {
     name: string;
     description: string;
-    contents?: string;
     colour?: string;
     price: number;
-    depositAmount: number;
     minRentalDays: number;
     maxRentalDays: number;
     bufferDays: number;
@@ -157,7 +156,7 @@ export interface BookingDetail {
     completionNotes?: string | null
     depositAmountKept?: number | null
     createdAt: string
-    setItemsByProduct?: Record<string, SetItemDetail[]>
+    setItemsByBookingItem?: Record<string, SetItemDetail[]>
     bookingItems: BookingItemDetail[]
 }
 
@@ -182,7 +181,6 @@ export interface MaintenanceComponentDetail {
     totalDamaged: number
     totalMissing: number
     spareStockAvailable: number
-    isReplaced: boolean
 }
 
 export interface MaintenanceQueueItem {

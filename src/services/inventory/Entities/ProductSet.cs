@@ -13,6 +13,7 @@ public class ProductSet
     public required string Name { get; set; }
     public Status Status { get; set; } = Status.Available;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CleanedAt { get; set; }
 
     public Guid ProductId { get; set; }
 

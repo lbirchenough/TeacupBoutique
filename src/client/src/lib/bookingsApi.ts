@@ -86,9 +86,9 @@ export const bookingsApi = {
         return response.json()
     },
 
-    markCleaned: async (bookingId: string): Promise<void> => {
+    markCleaned: async (productSetId: string): Promise<void> => {
         const response = await fetch(
-            `${INVENTORY_API_BASE_URL}/api/bookings/${bookingId}/maintenance/mark-cleaned`,
+            `${INVENTORY_API_BASE_URL}/api/maintenance/${productSetId}/mark-cleaned`,
             { method: 'POST', headers: { ...authHeaders() } }
         )
         if (!response.ok) throw new Error(`Failed to mark as cleaned (${response.status})`)

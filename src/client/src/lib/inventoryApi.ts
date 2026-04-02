@@ -72,6 +72,22 @@ export const inventoryApi = {
         return handleResponse(response)
     },
 
+    deactivateSetItem: async (productId: string, setItemId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/set-items/${setItemId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+        return handleResponse(response)
+    },
+
+    activateSetItem: async (productId: string, setItemId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/set-items/${setItemId}/activate`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+        return handleResponse(response)
+    },
+
     getAvailability: async (date: string): Promise<ProductAvailabilityDto[]> => {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/availability?date=${date}`)
         return handleResponse(response)
