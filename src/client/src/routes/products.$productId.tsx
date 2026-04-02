@@ -50,7 +50,10 @@ function ProductDetailPage() {
 
     const addSetItemMutation = useMutation({
         mutationFn: (dto: SetItemCreateDto) => inventoryApi.createSetItem(productId, dto, accessToken!),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['set-items', productId] }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['set-items', productId] })
+            queryClient.invalidateQueries({ queryKey: ['product', productId] })
+        },
     })
 
     const deactivateSetItemMutation = useMutation({
