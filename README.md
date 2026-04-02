@@ -623,7 +623,62 @@ Alternatively, make all GHCR packages public (safe since images contain no secre
 
 ---
 
-## 7. Deploy
+## 7. Cloudflare Turnstile Setup
+
+Turnstile validates CAPTCHA tokens server-side against an allowed domain list. The site key is a public key baked into the client at build time.
+
+### Add the production domain
+
+Cloudflare dashboard → **Turnstile** → your widget → **Settings** → **Hostname Management** → **Add Hostnames** → add `teacupboutique.lbirchen.com` → **Update**.
+
+`localhost` should already be present for local dev.
+
+### Client build config
+
+The Turnstile site key (and Stripe publishable key) must be present in `src/client/.env.production` so Vite bakes them into the production bundle:
+
+```
+VITE_TURNSTILE_SITE_KEY_MANAGED=0x4AAA...
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+```
+
+These are public keys — safe to commit. Without them the register/login forms will be broken in production (greyed out submit button, undefined sitekey error in console).
+
+---
+
+## 8. Stripe Webhook Setup
+
+For production, register the webhook endpoint in the Stripe dashboard so Stripe sends payment events to your server.
+
+### Register the endpoint
+
+Stripe dashboard → **Developers** → **Webhooks** → **Add endpoint**:
+
+- **URL**: `https://teacupboutique.lbirchen.com/webhooks/stripe`
+- **Events**: `payment_intent.succeeded`, `payment_intent.payment_failed`
+
+### Webhook signing secret
+
+After creating the endpoint, Stripe gives you a signing secret (`whsec_...`). Add it to the VM secrets file:
+
+```
+# /opt/teacupboutique/.secrets/payments.env
+Stripe__WebhookSecret=whsec_...
+```
+
+Then restart the payments container to pick it up:
+
+```bash
+docker compose -f /opt/teacupboutique/docker-compose.prod.yml up -d payments
+```
+
+### Local dev
+
+Keep the Stripe CLI webhook secret in your local `.secrets/payments.env`. The VM and local secrets files are completely separate — no conflict.
+
+---
+
+## 9. Deploy
 
 Push to `main`. GitHub Actions will:
 
