@@ -9,9 +9,13 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     public DbSet<Category> Categories { get; set; }
     public DbSet<Photo> Photos { get; set; }
     public DbSet<Tag> Tags { get; set; }
-    public DbSet<InventoryItem> InventoryItems { get; set; }
+    public DbSet<ProductSet> ProductSets { get; set; }
+    public DbSet<SetItem> SetItems { get; set; }
+    public DbSet<SpareStock> SpareStocks { get; set; }
+    public DbSet<ReturnAssessment> ReturnAssessments { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<BookingItem> BookingItems { get; set; }
+    public DbSet<BookingItemComponent> BookingItemComponents { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,27 +29,104 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
             .HasIndex(c => c.Name)
             .IsUnique();
 
-        // SQL Server: only one cascade path to a table. BookingItem has FKs to Product and InventoryItem;
-        // Product cascades to InventoryItem, so we get two paths to BookingItem. NoAction on this one fixes it.
+        // SQL Server: only one cascade path to a table. BookingItem has FKs to both Product and ProductSet.
+        // Product cascades to ProductSet, giving two paths to BookingItem. NoAction on both fixes it.
         modelBuilder.Entity<BookingItem>()
             .HasOne(bi => bi.Product)
             .WithMany(p => p.BookingItems)
             .HasForeignKey("ProductId")
             .OnDelete(DeleteBehavior.NoAction);
 
+        modelBuilder.Entity<BookingItem>()
+            .HasOne(bi => bi.ProductSet)
+            .WithMany(ps => ps.BookingItems)
+            .HasForeignKey("ProductSetId")
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<BookingItemComponent>()
+            .HasOne(c => c.BookingItem)
+            .WithMany(bi => bi.Components)
+            .HasForeignKey(c => c.BookingItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<BookingItemComponent>()
+            .HasOne(c => c.SetItem)
+            .WithMany()
+            .HasForeignKey(c => c.SetItemId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        // SpareStock: one per SetItem (unique constraint)
+        modelBuilder.Entity<SpareStock>()
+            .HasIndex(ss => ss.SetItemId)
+            .IsUnique();
+
         SeedProducts(modelBuilder);
-        SeedInventoryItems(modelBuilder);
+        SeedProductSets(modelBuilder);
+        SeedSetItems(modelBuilder);
+        SeedSpareStock(modelBuilder);
     }
 
-    private static void SeedInventoryItems(ModelBuilder modelBuilder)
+    private static void SeedProductSets(ModelBuilder modelBuilder)
     {
         var createdAt = new DateTime(2025, 1, 15, 10, 0, 0, DateTimeKind.Utc);
-        modelBuilder.Entity<InventoryItem>().HasData(
-            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222201"), SerialNumber = "SN-001", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
-            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222202"), SerialNumber = "SN-002", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
-            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222203"), SerialNumber = "SN-003", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
-            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222204"), SerialNumber = "SN-004", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt },
-            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222205"), SerialNumber = "SN-005", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Condition = Condition.New, Status = Status.Available, ConditionNotes = (string?)null, MaintenanceHistory = (string?)null, CreatedAt = createdAt }
+        modelBuilder.Entity<ProductSet>().HasData(
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222201"), Name = "Set A", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Status = Status.Available, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222202"), Name = "Set A", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Status = Status.Available, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222203"), Name = "Set A", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Status = Status.Available, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222204"), Name = "Set A", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Status = Status.Available, CreatedAt = createdAt },
+            new { Id = Guid.Parse("22222222-2222-2222-2222-222222222205"), Name = "Set A", ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Status = Status.Available, CreatedAt = createdAt }
+        );
+    }
+
+    private static void SeedSetItems(ModelBuilder modelBuilder)
+    {
+        // Product 1: Vintage Rose Tea Set (deposit=80, servings=6)
+        // Product 2: Classic English Afternoon Set (deposit=100, servings=4)
+        // Product 3: Garden Party Tier Set (deposit=120, servings=8)
+        // Product 4: Minimalist White Set (deposit=70, servings=4)
+        // Product 5: Royal Style Fine China Set (deposit=140, servings=6)
+        modelBuilder.Entity<SetItem>().HasData(
+            // Product 1 — sum: 25 + 48 + 7 = 80
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333301"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 25.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333302"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Teacups & Saucers", Quantity = 6, DepositValuePerUnit = 8.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333303"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111101"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 7.00m, IsActive = true },
+            // Product 2 — sum: 30 + 40 + 30 = 100
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333304"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 30.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333305"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Teacups & Saucers", Quantity = 4, DepositValuePerUnit = 10.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333306"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111102"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 30.00m, IsActive = true },
+            // Product 3 — sum: 30 + 64 + 26 = 120
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333307"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 30.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333308"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Teacups & Saucers", Quantity = 8, DepositValuePerUnit = 8.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333309"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111103"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 26.00m, IsActive = true },
+            // Product 4 — sum: 25 + 32 + 13 = 70
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333310"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 25.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333311"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Teacups & Saucers", Quantity = 4, DepositValuePerUnit = 8.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333312"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111104"), Name = "Plates & Stand", Quantity = 1, DepositValuePerUnit = 13.00m, IsActive = true },
+            // Product 5 — sum: 35 + 72 + 33 = 140
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333313"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Teapot", Quantity = 1, DepositValuePerUnit = 35.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333314"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Teacups & Saucers", Quantity = 6, DepositValuePerUnit = 12.00m, IsActive = true },
+            new { Id = Guid.Parse("33333333-3333-3333-3333-333333333315"), ProductId = Guid.Parse("11111111-1111-1111-1111-111111111105"), Name = "Plates & Accessories", Quantity = 1, DepositValuePerUnit = 33.00m, IsActive = true }
+        );
+    }
+
+    private static void SeedSpareStock(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SpareStock>().HasData(
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444401"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333301"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444402"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333302"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444403"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333303"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444404"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333304"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444405"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333305"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444406"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333306"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444407"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333307"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444408"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333308"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444409"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333309"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444410"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333310"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444411"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333311"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444412"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333312"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444413"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333313"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444414"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333314"), QuantityAvailable = 2 },
+            new { Id = Guid.Parse("44444444-4444-4444-4444-444444444415"), SetItemId = Guid.Parse("33333333-3333-3333-3333-333333333315"), QuantityAvailable = 2 }
         );
     }
 

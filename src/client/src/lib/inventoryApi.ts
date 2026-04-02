@@ -1,4 +1,4 @@
-import type { InventoryItemUpdateDto, ProductAvailabilityDto, ProductCreateDto, ProductUpdateDto } from './types'
+import type { ProductAvailabilityDto, ProductCreateDto, ProductUpdateDto, SetItemCreateDto } from './types'
 
 const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5054'
 
@@ -43,39 +43,53 @@ export const inventoryApi = {
         return handleResponse(response)
     },
 
-    // Inventory items
-    getProductItems: async (productId: string) => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items`)
+    // Product sets (physical instances)
+    getProductSets: async (productId: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/sets`)
         return handleResponse(response)
     },
 
-    createInventoryItem: async (productId: string, token: string) => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items`, {
+    createProductSet: async (productId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/sets`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
         })
         return handleResponse(response)
     },
 
-    updateInventoryItem: async (productId: string, itemId: string, dto: InventoryItemUpdateDto, token: string) => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items/${itemId}`, {
-            method: 'PUT',
+    // Set items (component definitions — write-once)
+    getSetItems: async (productId: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/set-items`)
+        return handleResponse(response)
+    },
+
+    createSetItem: async (productId: string, dto: SetItemCreateDto, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/set-items`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(dto),
         })
         return handleResponse(response)
     },
 
-    getAvailability: async (date: string): Promise<ProductAvailabilityDto[]> => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/availability?date=${date}`)
-        return handleResponse(response)
-    },
-
-    deleteInventoryItem: async (productId: string, itemId: string, token: string) => {
-        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/items/${itemId}`, {
+    deactivateSetItem: async (productId: string, setItemId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/set-items/${setItemId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` },
         })
+        return handleResponse(response)
+    },
+
+    activateSetItem: async (productId: string, setItemId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/set-items/${setItemId}/activate`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+        return handleResponse(response)
+    },
+
+    getAvailability: async (date: string): Promise<ProductAvailabilityDto[]> => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/availability?date=${date}`)
         return handleResponse(response)
     },
 }

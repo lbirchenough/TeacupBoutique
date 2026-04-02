@@ -11,5 +11,3 @@ export const authStore = {
     accessToken = null
   },
 }
-
-

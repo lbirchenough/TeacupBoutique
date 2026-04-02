@@ -207,6 +207,12 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
             : null;
         await _context.SaveChangesAsync();
 
+        if (payload.RefundAmount > 0)
+        {
+            var refundPayload = JsonSerializer.Serialize(new { OrderId = order.Id, Amount = payload.RefundAmount });
+            await _publisher.PublishAsync("orders.RefundRequested", refundPayload);
+        }
+
         var completedDto = new OrderCompletedDto
         {
             OrderId = order.Id,
@@ -219,7 +225,7 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
             CompletionNotes = payload.CompletionNotes
         };
         await _publisher.PublishAsync("orders.OrderCompleted", JsonSerializer.Serialize(completedDto));
-        _logger.LogInformation("Order {OrderId} completed via booking {BookingId}", payload.OrderId, payload.BookingId);
+        _logger.LogInformation("Order {OrderId} completed via booking {BookingId}, refund {RefundAmount}", payload.OrderId, payload.BookingId, payload.RefundAmount);
     }
 
     public async Task RefundOrder(Guid orderId, decimal amount)
@@ -295,6 +301,23 @@ public class OrderEventService(IMessagePublisher _publisher, OrdersDbContext _co
         await _publisher.PublishAsync("orders.OrderCancelled", JsonSerializer.Serialize(cancelledDto));
     }
 
+    public async Task HandleReturnAssessedWithMissingItems(string message)
+    {
+        var payload = JsonSerializer.Deserialize<ReturnAssessedWithMissingItemsDto>(message,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (payload is null) return;
+
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == payload.OrderId);
+        if (order is null) { _logger.LogWarning("Order {OrderId} not found for ReturnAssessedWithMissingItems", payload.OrderId); return; }
+
+        order.Status = OrderStatus.PendingMissingItems;
+        order.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Order {OrderId} → PendingMissingItems", payload.OrderId);
+    }
+
     private record RefundSucceededDto(Guid OrderId, decimal Amount, string StripeRefundId);
     private record RefundFailedDto(Guid OrderId, decimal Amount, string Reason);
+    private record ReturnAssessedWithMissingItemsDto(Guid OrderId);
 }

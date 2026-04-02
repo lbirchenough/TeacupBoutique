@@ -1,4 +1,3 @@
-using System;
 using orders.Entities;
 
 namespace orders.Interfaces;
@@ -16,4 +15,5 @@ public interface IOrderEvent
     Task RefundOrder(Guid orderId, decimal amount);
     Task HandleRefundSucceeded(string message);
     Task HandleRefundFailed(string message);
+    Task HandleReturnAssessedWithMissingItems(string message);
 }

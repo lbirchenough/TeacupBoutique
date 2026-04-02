@@ -1,4 +1,3 @@
-using System;
 using System.Text.Json;
 using inventory.Data;
 using inventory.Entities;
@@ -25,34 +24,54 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
                 .Where(p => productIds.Contains(p.Id))
                 .ToDictionaryAsync(p => p.Id);
 
+            var setItemsByProduct = await _context.SetItems
+                .Where(si => productIds.Contains(si.ProductId) && si.IsActive)
+                .ToListAsync();
+
             var bookingItems = new List<BookingItem>();
             allInStock = true;
 
             foreach (var item in placedOrder.Items)
             {
-                var availableItems = await _context.InventoryItems
-                    .Where(inv => inv.ProductId == item.ProductId
-                        && inv.Status == Status.Available
-                        && !inv.BookingItems.Any(bi =>
+                var availableSets = await _context.ProductSets
+                    .Where(ps => ps.ProductId == item.ProductId
+                        && ps.Status != Status.Retired
+                        && !ps.BookingItems!.Any(bi =>
                             bi.ReservationDate == placedOrder.ReservationDate
                             && bi.Booking!.Status != BookingStatus.Cancelled))
                     .Take(item.Quantity)
                     .ToListAsync();
 
-                if (availableItems.Count < item.Quantity)
+                if (availableSets.Count < item.Quantity)
                 {
                     allInStock = false;
                     break;
                 }
 
-                foreach (var inventoryItem in availableItems)
+                var productSetItems = setItemsByProduct.Where(si => si.ProductId == item.ProductId).ToList();
+
+                foreach (var productSet in availableSets)
                 {
-                    bookingItems.Add(new BookingItem
+                    var bookingItem = new BookingItem
                     {
                         ProductId = item.ProductId,
-                        InventoryItemId = inventoryItem.Id,
+                        ProductSetId = productSet.Id,
                         ReservationDate = placedOrder.ReservationDate,
-                    });
+                    };
+
+                    foreach (var setItem in productSetItems)
+                    {
+                        bookingItem.Components ??= [];
+                        bookingItem.Components.Add(new BookingItemComponent
+                        {
+                            SetItemId = setItem.Id,
+                            Name = setItem.Name,
+                            Quantity = setItem.Quantity,
+                            DepositValuePerUnit = setItem.DepositValuePerUnit,
+                        });
+                    }
+
+                    bookingItems.Add(bookingItem);
                 }
             }
 
@@ -80,7 +99,9 @@ public class InventoryEventService(IMessagePublisher _publisher, InventoryDbCont
                         ProductId = i.ProductId,
                         Quantity = i.Quantity,
                         UnitPrice = products[i.ProductId].Price,
-                        DepositAmount = products[i.ProductId].DepositAmount,
+                        DepositAmount = setItemsByProduct
+                            .Where(si => si.ProductId == i.ProductId)
+                            .Sum(si => si.Quantity * si.DepositValuePerUnit),
                     }).ToList()
                 };
             }

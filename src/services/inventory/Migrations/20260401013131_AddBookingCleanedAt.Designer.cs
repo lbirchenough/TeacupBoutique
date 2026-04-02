@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using inventory.Data;
 
@@ -11,9 +12,11 @@ using inventory.Data;
 namespace inventory.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    partial class InventoryDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401013131_AddBookingCleanedAt")]
+    partial class AddBookingCleanedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -44,6 +47,9 @@ namespace inventory.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime?>("CheckedOutAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("CleanedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("CompletedAt")
@@ -129,37 +135,6 @@ namespace inventory.Migrations
                     b.HasIndex("ProductSetId");
 
                     b.ToTable("BookingItems");
-                });
-
-            modelBuilder.Entity("inventory.Entities.BookingItemComponent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("BookingItemId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("DepositValuePerUnit")
-                        .HasColumnType("decimal(10,2)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("SetItemId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BookingItemId");
-
-                    b.HasIndex("SetItemId");
-
-                    b.ToTable("BookingItemComponents");
                 });
 
             modelBuilder.Entity("inventory.Entities.Category", b =>
@@ -351,9 +326,6 @@ namespace inventory.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("CleanedAt")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -428,9 +400,6 @@ namespace inventory.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("QuantityCustomerReturned")
-                        .HasColumnType("int");
-
                     b.Property<int>("QuantityDamaged")
                         .HasColumnType("int");
 
@@ -464,9 +433,6 @@ namespace inventory.Migrations
                     b.Property<decimal>("DepositValuePerUnit")
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -488,7 +454,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333301"),
                             DepositValuePerUnit = 25.00m,
-                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111101"),
                             Quantity = 1
@@ -497,7 +462,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333302"),
                             DepositValuePerUnit = 8.00m,
-                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111101"),
                             Quantity = 6
@@ -506,7 +470,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333303"),
                             DepositValuePerUnit = 7.00m,
-                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111101"),
                             Quantity = 1
@@ -515,7 +478,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333304"),
                             DepositValuePerUnit = 30.00m,
-                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111102"),
                             Quantity = 1
@@ -524,7 +486,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333305"),
                             DepositValuePerUnit = 10.00m,
-                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111102"),
                             Quantity = 4
@@ -533,7 +494,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333306"),
                             DepositValuePerUnit = 30.00m,
-                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111102"),
                             Quantity = 1
@@ -542,7 +502,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333307"),
                             DepositValuePerUnit = 30.00m,
-                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111103"),
                             Quantity = 1
@@ -551,7 +510,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333308"),
                             DepositValuePerUnit = 8.00m,
-                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111103"),
                             Quantity = 8
@@ -560,7 +518,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333309"),
                             DepositValuePerUnit = 26.00m,
-                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111103"),
                             Quantity = 1
@@ -569,7 +526,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333310"),
                             DepositValuePerUnit = 25.00m,
-                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111104"),
                             Quantity = 1
@@ -578,7 +534,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333311"),
                             DepositValuePerUnit = 8.00m,
-                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111104"),
                             Quantity = 4
@@ -587,7 +542,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333312"),
                             DepositValuePerUnit = 13.00m,
-                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111104"),
                             Quantity = 1
@@ -596,7 +550,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333313"),
                             DepositValuePerUnit = 35.00m,
-                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111105"),
                             Quantity = 1
@@ -605,7 +558,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333314"),
                             DepositValuePerUnit = 12.00m,
-                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111105"),
                             Quantity = 6
@@ -614,7 +566,6 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333315"),
                             DepositValuePerUnit = 33.00m,
-                            IsActive = true,
                             Name = "Plates & Accessories",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111105"),
                             Quantity = 1
@@ -793,25 +744,6 @@ namespace inventory.Migrations
                     b.Navigation("ProductSet");
                 });
 
-            modelBuilder.Entity("inventory.Entities.BookingItemComponent", b =>
-                {
-                    b.HasOne("inventory.Entities.BookingItem", "BookingItem")
-                        .WithMany("Components")
-                        .HasForeignKey("BookingItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("inventory.Entities.SetItem", "SetItem")
-                        .WithMany()
-                        .HasForeignKey("SetItemId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("BookingItem");
-
-                    b.Navigation("SetItem");
-                });
-
             modelBuilder.Entity("inventory.Entities.Photo", b =>
                 {
                     b.HasOne("inventory.Entities.Product", "Product")
@@ -891,8 +823,6 @@ namespace inventory.Migrations
 
             modelBuilder.Entity("inventory.Entities.BookingItem", b =>
                 {
-                    b.Navigation("Components");
-
                     b.Navigation("ReturnAssessments");
                 });
 

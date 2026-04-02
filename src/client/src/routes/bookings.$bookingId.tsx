@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { bookingsApi, type BookingItemReturnDto, type CompleteBookingRequest } from '../lib/bookingsApi'
+import { bookingsApi, type BookingItemAssessmentDto, type SetItemAssessmentDto } from '../lib/bookingsApi'
 import { ordersApi } from '../lib/ordersApi'
-import type { BookingDetail, BookingStatus, OrderDetail, ReturnCondition } from '../lib/types'
+import type { BookingDetail, BookingStatus, OrderDetail, ReturnAssessmentDetail, SetItemDetail } from '../lib/types'
 
 export const Route = createFileRoute('/bookings/$bookingId')({
     component: BookingDetailPage,
@@ -18,11 +18,46 @@ const statusConfig: Record<BookingStatus, { label: string; bg: string; text: str
     Cancelled:  { label: 'Cancelled',   bg: 'bg-red-50',    text: 'text-red-800' },
 }
 
-const conditionOptions: ReturnCondition[] = ['Good', 'Damaged', 'MissingItems']
-const conditionLabel: Record<ReturnCondition, string> = {
-    Good: 'Good',
-    Damaged: 'Damaged',
-    MissingItems: 'Missing Items',
+// Assessment state per booking item: map of bookingItemId → map of setItemId → {good, damaged, missing}
+type ComponentAssessment = { good: number; damaged: number; missing: number }
+type ItemAssessmentState = Record<string, Record<string, ComponentAssessment>>
+
+function calcDeduction(assessmentState: ItemAssessmentState, booking: BookingDetail): number {
+    let deduction = 0
+    for (const [, components] of Object.entries(assessmentState)) {
+        for (const [setItemId, counts] of Object.entries(components)) {
+            const setItems = Object.values(booking.setItemsByBookingItem ?? {}).flat()
+            const setItem = setItems.find(si => si.id === setItemId)
+            if (setItem) {
+                deduction += (counts.damaged + counts.missing) * setItem.depositValuePerUnit
+            }
+        }
+    }
+    return deduction
+}
+
+function calcDepositTotal(booking: BookingDetail): number {
+    if (!booking.setItemsByBookingItem) return 0
+    return booking.bookingItems.reduce((total, bi) => {
+        const items = booking.setItemsByBookingItem![bi.id] ?? []
+        return total + items.reduce((sum, si) => sum + si.quantity * si.depositValuePerUnit, 0)
+    }, 0)
+}
+
+function calcCompletionRefund(booking: BookingDetail): { depositTotal: number; deduction: number; refund: number } {
+    const depositTotal = calcDepositTotal(booking)
+    const allSetItems = Object.values(booking.setItemsByBookingItem ?? {}).flat()
+    let deduction = 0
+    for (const bi of booking.bookingItems) {
+        for (const ra of bi.returnAssessments ?? []) {
+            const si = allSetItems.find(s => s.id === ra.setItemId)
+            if (si) {
+                const stillMissing = Math.max(0, ra.quantityMissing - ra.quantityCustomerReturned)
+                deduction += (ra.quantityDamaged + stillMissing) * si.depositValuePerUnit
+            }
+        }
+    }
+    return { depositTotal, deduction, refund: Math.max(0, depositTotal - deduction) }
 }
 
 function BookingDetailPage() {
@@ -30,12 +65,13 @@ function BookingDetailPage() {
     const queryClient = useQueryClient()
 
     const [showReturnForm, setShowReturnForm] = useState(false)
-    const [returnItems, setReturnItems] = useState<Record<string, { condition: ReturnCondition; notes: string }>>({})
+    const [assessmentState, setAssessmentState] = useState<ItemAssessmentState>({})
+    const [returnNotes, setReturnNotes] = useState<Record<string, string>>({})
     const [showCancelConfirm, setShowCancelConfirm] = useState(false)
-    const [showCompleteForm, setShowCompleteForm] = useState(false)
-    const [depositAmountKept, setDepositAmountKept] = useState('')
     const [completionNotes, setCompletionNotes] = useState('')
-    const [photoFiles, setPhotoFiles] = useState<File[]>([])
+    const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([])
+    const [uploadingPhoto, setUploadingPhoto] = useState(false)
+    const [uploadError, setUploadError] = useState<string | null>(null)
 
     const { data: booking, isPending, isError } = useQuery<BookingDetail>({
         queryKey: ['booking', bookingId],
@@ -48,7 +84,11 @@ function BookingDetailPage() {
         enabled: !!booking?.orderId,
     })
 
-    const invalidate = () => queryClient.invalidateQueries({ queryKey: ['booking', bookingId] })
+    const invalidate = () => {
+        queryClient.invalidateQueries({ queryKey: ['booking', bookingId] })
+        queryClient.invalidateQueries({ queryKey: ['order-admin', booking?.orderId] })
+        queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    }
 
     const checkOutMutation = useMutation({
         mutationFn: () => bookingsApi.checkOut(bookingId),
@@ -57,41 +97,65 @@ function BookingDetailPage() {
 
     const returnMutation = useMutation({
         mutationFn: () => {
-            const items: BookingItemReturnDto[] = booking!.bookingItems.map(item => ({
-                bookingItemId: item.id,
-                returnCondition: returnItems[item.id]?.condition ?? 'Good',
-                returnNotes: returnItems[item.id]?.notes || null,
+            const items: BookingItemAssessmentDto[] = booking!.bookingItems.map(bi => ({
+                bookingItemId: bi.id,
+                components: (booking!.setItemsByBookingItem?.[bi.id] ?? []).map(si => {
+                    const counts = assessmentState[bi.id]?.[si.id] ?? { good: si.quantity, damaged: 0, missing: 0 }
+                    return {
+                        setItemId: si.id,
+                        quantityGood: counts.good,
+                        quantityDamaged: counts.damaged,
+                        quantityMissing: counts.missing,
+                    } satisfies SetItemAssessmentDto
+                }),
+                returnNotes: returnNotes[bi.id] || null,
             }))
             return bookingsApi.markReturned(bookingId, items)
         },
         onSuccess: () => {
             setShowReturnForm(false)
+            setAssessmentState({})
+            setReturnNotes({})
             invalidate()
+            queryClient.invalidateQueries({ queryKey: ['maintenance-queue'] })
+        },
+    })
+
+    const markMissingReturnedMutation = useMutation({
+        mutationFn: (assessmentId: string) => bookingsApi.markMissingItemReturned(bookingId, assessmentId),
+        onSuccess: () => {
+            invalidate()
+            queryClient.invalidateQueries({ queryKey: ['spare-stock'] })
         },
     })
 
     const completeMutation = useMutation({
-        mutationFn: async () => {
-            const urls: string[] = []
-            for (const file of photoFiles) {
-                const { url } = await bookingsApi.uploadPhoto(bookingId, file)
-                urls.push(url)
-            }
-            const request: CompleteBookingRequest = {
-                depositAmountKept: depositAmountKept ? parseFloat(depositAmountKept) : null,
-                completionNotes: completionNotes || null,
-                returnPhotoUrls: urls,
-            }
-            return bookingsApi.complete(bookingId, request)
-        },
+        mutationFn: () => bookingsApi.complete(bookingId, {
+            completionNotes: completionNotes.trim() || undefined,
+            returnPhotoUrls: uploadedPhotoUrls.length > 0 ? uploadedPhotoUrls : undefined,
+        }),
         onSuccess: () => {
-            setShowCompleteForm(false)
-            setDepositAmountKept('')
             setCompletionNotes('')
-            setPhotoFiles([])
+            setUploadedPhotoUrls([])
             invalidate()
         },
     })
+
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files ?? [])
+        if (files.length === 0) return
+        setUploadingPhoto(true)
+        setUploadError(null)
+        try {
+            const urls = await Promise.all(files.map(f => bookingsApi.uploadPhoto(bookingId, f)))
+            setUploadedPhotoUrls(prev => [...prev, ...urls])
+        } catch (err) {
+            setUploadError(err instanceof Error ? err.message : 'Upload failed')
+        } finally {
+            setUploadingPhoto(false)
+            e.target.value = ''
+        }
+    }
 
     const cancelMutation = useMutation({
         mutationFn: () => bookingsApi.cancelBooking(bookingId),
@@ -114,15 +178,59 @@ function BookingDetailPage() {
     )
 
     const config = statusConfig[booking.status]
+    const depositTotal = calcDepositTotal(booking)
+    const currentDeduction = calcDeduction(assessmentState, booking)
+    const hasMissingInForm = Object.values(assessmentState).some(components =>
+        Object.values(components).some(c => c.missing > 0)
+    )
+
+    // Validate totals are correct for all items
+    const allTotalsValid = !showReturnForm || booking.bookingItems.every(bi => {
+        const setItems = booking.setItemsByBookingItem?.[bi.id] ?? []
+        return setItems.every(si => {
+            const counts = assessmentState[bi.id]?.[si.id] ?? { good: si.quantity, damaged: 0, missing: 0 }
+            return counts.good + counts.damaged + counts.missing === si.quantity
+        })
+    })
 
     const initReturnForm = () => {
-        const initial: Record<string, { condition: ReturnCondition; notes: string }> = {}
-        booking.bookingItems.forEach(item => {
-            initial[item.id] = { condition: 'Good', notes: '' }
+        const initial: ItemAssessmentState = {}
+        booking.bookingItems.forEach(bi => {
+            initial[bi.id] = {}
+            const setItems = booking.setItemsByBookingItem?.[bi.id] ?? []
+            setItems.forEach(si => {
+                initial[bi.id][si.id] = { good: si.quantity, damaged: 0, missing: 0 }
+            })
         })
-        setReturnItems(initial)
+        setAssessmentState(initial)
+        setReturnNotes({})
         setShowReturnForm(true)
     }
+
+    const updateCount = (bookingItemId: string, setItemId: string, field: keyof ComponentAssessment, value: number) => {
+        setAssessmentState(prev => {
+            const biState = prev[bookingItemId] ?? {}
+            const si = booking.setItemsByBookingItem?.[bookingItemId]?.find(s => s.id === setItemId)
+            if (!si) return prev
+            const current = biState[setItemId] ?? { good: si.quantity, damaged: 0, missing: 0 }
+            const updated = { ...current, [field]: Math.max(0, value) }
+            // Auto-adjust good to keep total = quantity
+            const total = updated.damaged + updated.missing
+            updated.good = Math.max(0, si.quantity - total)
+            return { ...prev, [bookingItemId]: { ...biState, [setItemId]: updated } }
+        })
+    }
+
+    // Pending missing items: show whenever booking is Returned and there are missing assessments
+    const allMissingAssessments: Array<ReturnAssessmentDetail & { bookingItemId: string }> =
+        booking.bookingItems.flatMap(bi =>
+            (bi.returnAssessments ?? [])
+                .filter(ra => ra.quantityMissing > 0)
+                .map(ra => ({ ...ra, bookingItemId: bi.id }))
+        )
+
+    const hasPendingMissing = booking.status === 'Returned' && allMissingAssessments.length > 0
+    const completion = booking.status === 'Returned' ? calcCompletionRefund(booking) : null
 
     return (
         <div>
@@ -160,13 +268,6 @@ function BookingDetailPage() {
                                     isPending={false}
                                 />
                             )}
-                            {booking.status === 'Returned' && !showCompleteForm && (
-                                <ActionButton
-                                    label="Complete Booking"
-                                    onClick={() => setShowCompleteForm(true)}
-                                    isPending={false}
-                                />
-                            )}
                             {(booking.status === 'Reserved' || booking.status === 'Confirmed') && !showCancelConfirm && (
                                 <button
                                     onClick={() => setShowCancelConfirm(true)}
@@ -201,110 +302,166 @@ function BookingDetailPage() {
                             )}
                         </div>
                     )}
-                    {showCompleteForm && (
-                        <div className="mt-4 pt-4 border-t border-gold/20 space-y-4">
-                            <p className="text-sm text-brown font-serif">Complete this booking</p>
-                            <div className="space-y-3">
-                                {order?.depositTotal != null && order.depositTotal > 0 && (
-                                    <div>
-                                        <div className="flex justify-between mb-1">
-                                            <label className="text-xs font-semibold text-brown-light uppercase tracking-widest">
-                                                Deposit kept
-                                            </label>
-                                            <span className="text-sm font-semibold text-brown">
-                                                {depositAmountKept === ''
-                                                    ? 'Not recorded'
-                                                    : parseFloat(depositAmountKept) === 0
-                                                        ? 'Full refund ($0.00 kept)'
-                                                        : parseFloat(depositAmountKept) === order.depositTotal
-                                                            ? `Full deposit kept ($${order.depositTotal.toFixed(2)})`
-                                                            : `$${parseFloat(depositAmountKept).toFixed(2)} kept`}
-                                            </span>
+                </div>
+
+                {/* Pending missing items panel */}
+                {hasPendingMissing && (
+                    <div className="bg-amber-50 border border-amber-200 p-6 space-y-4">
+                        <h2 className="font-serif text-lg text-amber-900">Pending Missing Items</h2>
+                        <p className="text-sm text-amber-800">
+                            The following items were reported missing at return. Mark each as returned when the customer brings them back — spare stock will be updated and the deposit calculation will adjust.
+                        </p>
+                        <div className="space-y-2">
+                            {allMissingAssessments.map(ra => {
+                                const remaining = ra.quantityMissing - ra.quantityCustomerReturned
+                                const allReturned = remaining <= 0
+                                return (
+                                    <div key={ra.id} className="flex items-center justify-between py-2 border-b border-amber-200 last:border-0">
+                                        <div>
+                                            <p className={`text-sm font-medium ${allReturned ? 'text-brown-light line-through' : 'text-brown'}`}>
+                                                {ra.setItemName}
+                                            </p>
+                                            <p className="text-xs text-amber-700">
+                                                {allReturned ? 'all returned' : `${remaining} of ${ra.quantityMissing} still missing`}
+                                            </p>
                                         </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max={order.depositTotal}
-                                            step="0.01"
-                                            value={depositAmountKept === '' ? 0 : depositAmountKept}
-                                            onChange={e => setDepositAmountKept(e.target.value)}
-                                            className="w-full accent-gold"
-                                        />
-                                        <div className="flex justify-between text-xs text-brown-light mt-1">
-                                            <span>$0 (full refund)</span>
-                                            <span>${order.depositTotal.toFixed(2)} (keep all)</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setDepositAmountKept('')}
-                                            className="text-xs text-brown-light hover:text-brown transition-colors mt-1"
-                                        >
-                                            Clear (don't record deposit decision)
-                                        </button>
+                                        {allReturned ? (
+                                            <span className="text-xs bg-green-50 text-green-700 px-2 py-1">✓ Returned</span>
+                                        ) : (
+                                            <button
+                                                onClick={() => markMissingReturnedMutation.mutate(ra.id)}
+                                                disabled={markMissingReturnedMutation.isPending}
+                                                className="text-xs border border-amber-400 text-amber-800 px-3 py-1.5 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                            >
+                                                Mark 1 Returned
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Complete Booking form — shown when booking is Returned */}
+                {booking.status === 'Returned' && (
+                    <div className="bg-white border border-gold/20 p-6 space-y-5">
+                        <h2 className="font-serif text-lg text-brown">Complete Booking</h2>
+
+                        {/* Deposit summary */}
+                        {completion && (
+                            <div className="bg-cream-dark px-4 py-3 space-y-1">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-brown-light">Security deposit</span>
+                                    <span className="text-brown">${completion.depositTotal.toFixed(2)}</span>
+                                </div>
+                                {completion.deduction > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-amber-700">Deduction (damage/missing)</span>
+                                        <span className="text-amber-700">−${completion.deduction.toFixed(2)}</span>
                                     </div>
                                 )}
-                                <div>
-                                    <label className="text-xs font-semibold text-brown-light uppercase tracking-widest block mb-1">
-                                        Completion notes
-                                    </label>
-                                    <textarea
-                                        rows={3}
-                                        placeholder="Visible to customer on their order page"
-                                        value={completionNotes}
-                                        onChange={e => setCompletionNotes(e.target.value)}
-                                        className="w-full border border-gold/20 px-3 py-2 text-sm text-brown placeholder-brown-light/50 focus:outline-none focus:border-gold/50 resize-none"
-                                    />
+                                <div className="flex justify-between text-sm font-semibold border-t border-gold/20 pt-1 mt-1">
+                                    <span className="text-brown">Deposit to refund</span>
+                                    <span className="text-brown">${completion.refund.toFixed(2)}</span>
                                 </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-brown-light uppercase tracking-widest block mb-1">
-                                        Photos
-                                    </label>
+                            </div>
+                        )}
+
+                        {hasPendingMissing && (
+                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2">
+                                {allMissingAssessments.filter(ra => ra.quantityCustomerReturned < ra.quantityMissing).length} component(s) still missing — deposit will be deducted for unreturned items if you complete now.
+                            </p>
+                        )}
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-brown-light uppercase tracking-widest mb-1.5">
+                                    Completion Notes
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    placeholder="Any notes about the return condition, customer feedback, etc. (optional)"
+                                    value={completionNotes}
+                                    onChange={e => setCompletionNotes(e.target.value)}
+                                    className="w-full border border-gold/20 px-3 py-2 text-sm text-brown placeholder-brown-light/50 focus:outline-none focus:border-gold/50 resize-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-brown-light uppercase tracking-widest mb-1.5">
+                                    Return Photos <span className="font-normal normal-case">(optional)</span>
+                                </label>
+                                <label className={`flex items-center gap-3 border border-dashed border-gold/40 px-4 py-3 cursor-pointer hover:border-gold/70 transition-colors ${uploadingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
                                     <input
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp"
                                         multiple
-                                        onChange={e => setPhotoFiles(Array.from(e.target.files ?? []))}
-                                        className="text-sm text-brown-light"
+                                        className="sr-only"
+                                        onChange={handlePhotoUpload}
+                                        disabled={uploadingPhoto}
                                     />
-                                    {photoFiles.length > 0 && (
-                                        <ul className="mt-2 space-y-1">
-                                            {photoFiles.map((f, i) => (
-                                                <li key={i} className="flex items-center justify-between text-xs text-brown-mid">
-                                                    <span>{f.name}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setPhotoFiles(prev => prev.filter((_, j) => j !== i))}
-                                                        className="text-red-400 hover:text-red-600 ml-2"
-                                                    >
-                                                        remove
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
+                                    <span className="text-sm text-brown-light">
+                                        {uploadingPhoto ? 'Uploading…' : 'Choose photos'}
+                                    </span>
+                                    <span className="text-xs text-brown-light/60">JPEG, PNG, WebP</span>
+                                </label>
+                                {uploadError && (
+                                    <p className="text-xs text-red-600 mt-1">{uploadError}</p>
+                                )}
+                                {uploadedPhotoUrls.length > 0 && (
+                                    <div className="grid grid-cols-4 gap-2 mt-3">
+                                        {uploadedPhotoUrls.map((url, i) => (
+                                            <div key={i} className="relative group">
+                                                <img src={url} alt={`Return photo ${i + 1}`} className="w-full aspect-square object-cover border border-gold/20" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setUploadedPhotoUrls(prev => prev.filter((_, idx) => idx !== i))}
+                                                    className="absolute top-1 right-1 bg-black/50 text-white text-xs w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => completeMutation.mutate()}
-                                    disabled={completeMutation.isPending}
-                                    className="text-xs bg-brown hover:bg-brown-mid text-cream px-5 py-2 transition-colors disabled:opacity-50"
-                                >
-                                    {completeMutation.isPending ? (photoFiles.length > 0 ? 'Uploading…' : 'Completing…') : 'Confirm Completion'}
-                                </button>
-                                <button
-                                    onClick={() => setShowCompleteForm(false)}
-                                    className="text-xs text-brown-light hover:text-brown transition-colors px-3"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
+                        </div>
+
+                        <div className="pt-1 space-y-2">
+                            <button
+                                onClick={() => completeMutation.mutate()}
+                                disabled={completeMutation.isPending}
+                                className="bg-brown hover:bg-brown-mid text-cream text-sm px-6 py-2.5 transition-colors disabled:opacity-50"
+                            >
+                                {completeMutation.isPending ? 'Completing…' : 'Complete Booking'}
+                            </button>
                             {completeMutation.isError && (
                                 <p className="text-xs text-red-600">{completeMutation.error.message}</p>
                             )}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+
+                {/* Completed summary */}
+                {booking.status === 'Completed' && booking.depositAmountKept !== undefined && (
+                    <div className="bg-white border border-gold/20 p-6">
+                        <h2 className="font-serif text-lg text-brown mb-4">Completion Summary</h2>
+                        <div className="space-y-2 text-sm">
+                            {booking.depositAmountKept != null && booking.depositAmountKept > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-brown-light">Deposit kept (damage/missing)</span>
+                                    <span className="text-amber-700">${booking.depositAmountKept.toFixed(2)}</span>
+                                </div>
+                            )}
+                            {booking.completionNotes && (
+                                <div className="pt-2 border-t border-gold/10">
+                                    <p className="text-xs font-semibold text-brown-light uppercase tracking-widest mb-1">Notes</p>
+                                    <p className="text-brown-mid italic text-sm">"{booking.completionNotes}"</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Booking details */}
                 <div className="bg-white border border-gold/20 p-6">
@@ -341,54 +498,90 @@ function BookingDetailPage() {
                     <h2 className="font-serif text-lg text-brown mb-5">Items</h2>
 
                     {showReturnForm ? (
-                        <div className="space-y-4">
-                            {booking.bookingItems.map(item => (
-                                <div key={item.id} className="border border-gold/20 p-4 space-y-3">
-                                    <div>
-                                        <p className="font-serif text-brown">{item.productName}</p>
-                                        {item.productColour && (
-                                            <p className="text-xs text-brown-light">{item.productColour}</p>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-3">
-                                        {conditionOptions.map(c => (
-                                            <button
-                                                key={c}
-                                                type="button"
-                                                onClick={() => setReturnItems(prev => ({
-                                                    ...prev,
-                                                    [item.id]: { ...prev[item.id], condition: c }
-                                                }))}
-                                                className={`text-xs px-3 py-1.5 border transition-colors ${
-                                                    returnItems[item.id]?.condition === c
-                                                        ? c === 'Good' ? 'bg-green-100 border-green-400 text-green-800'
-                                                          : c === 'Damaged' ? 'bg-red-100 border-red-400 text-red-800'
-                                                          : 'bg-amber-100 border-amber-400 text-amber-800'
-                                                        : 'border-gold/20 text-brown-light hover:border-gold/50'
-                                                }`}
-                                            >
-                                                {conditionLabel[c]}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    {returnItems[item.id]?.condition !== 'Good' && (
-                                        <input
-                                            type="text"
-                                            placeholder="Notes (optional)"
-                                            value={returnItems[item.id]?.notes ?? ''}
-                                            onChange={e => setReturnItems(prev => ({
-                                                ...prev,
-                                                [item.id]: { ...prev[item.id], notes: e.target.value }
-                                            }))}
-                                            className="w-full border border-gold/20 px-3 py-2 text-sm text-brown placeholder-brown-light/50 focus:outline-none focus:border-gold/50"
-                                        />
+                        <div className="space-y-6">
+                            {/* Live deposit calculation */}
+                            <div className="bg-cream-dark px-4 py-3 flex justify-between items-center">
+                                <span className="text-xs font-semibold text-brown-light uppercase tracking-widest">Deposit deduction</span>
+                                <div className="text-right">
+                                    <p className="font-serif text-brown">
+                                        ${currentDeduction.toFixed(2)} kept / ${Math.max(0, depositTotal - currentDeduction).toFixed(2)} returned
+                                    </p>
+                                    {hasMissingInForm && (
+                                        <p className="text-xs text-amber-700 mt-0.5">Order will enter pending state for missing items</p>
                                     )}
                                 </div>
-                            ))}
+                            </div>
+
+                            {booking.bookingItems.map(bi => {
+                                const setItems: SetItemDetail[] = booking.setItemsByBookingItem?.[bi.id] ?? []
+                                return (
+                                    <div key={bi.id} className="border border-gold/20 p-4 space-y-4">
+                                        <div>
+                                            <p className="font-serif text-brown">{bi.productName}</p>
+                                            {bi.productColour && <p className="text-xs text-brown-light">{bi.productColour}</p>}
+                                            <p className="text-xs text-brown-light font-mono">Set {bi.productSetName}</p>
+                                        </div>
+                                        {setItems.length === 0 ? (
+                                            <p className="text-xs text-brown-light italic">No components configured for this product.</p>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-brown-light uppercase tracking-widest">
+                                                    <span>Component</span>
+                                                    <span className="text-center">Good</span>
+                                                    <span className="text-center text-amber-700">Damaged</span>
+                                                    <span className="text-center text-red-600">Missing</span>
+                                                </div>
+                                                {setItems.map(si => {
+                                                    const counts = assessmentState[bi.id]?.[si.id] ?? { good: si.quantity, damaged: 0, missing: 0 }
+                                                    const total = counts.good + counts.damaged + counts.missing
+                                                    const valid = total === si.quantity
+                                                    return (
+                                                        <div key={si.id} className="grid grid-cols-4 gap-2 items-center">
+                                                            <div>
+                                                                <p className="text-sm text-brown">{si.name}</p>
+                                                                <p className="text-xs text-brown-light">qty {si.quantity} × ${si.depositValuePerUnit.toFixed(2)}</p>
+                                                            </div>
+                                                            <input
+                                                                type="number" min="0" max={si.quantity}
+                                                                value={counts.good}
+                                                                onChange={e => updateCount(bi.id, si.id, 'good', parseInt(e.target.value) || 0)}
+                                                                className={`border px-2 py-1.5 text-sm text-center w-full ${valid ? 'border-gold/20' : 'border-red-300'}`}
+                                                            />
+                                                            <input
+                                                                type="number" min="0" max={si.quantity}
+                                                                value={counts.damaged}
+                                                                onChange={e => updateCount(bi.id, si.id, 'damaged', parseInt(e.target.value) || 0)}
+                                                                className={`border px-2 py-1.5 text-sm text-center w-full ${valid ? 'border-gold/20' : 'border-red-300'}`}
+                                                            />
+                                                            <input
+                                                                type="number" min="0" max={si.quantity}
+                                                                value={counts.missing}
+                                                                onChange={e => updateCount(bi.id, si.id, 'missing', parseInt(e.target.value) || 0)}
+                                                                className={`border px-2 py-1.5 text-sm text-center w-full ${valid ? 'border-gold/20' : 'border-red-300'}`}
+                                                            />
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="Return notes (optional)"
+                                                value={returnNotes[bi.id] ?? ''}
+                                                onChange={e => setReturnNotes(prev => ({ ...prev, [bi.id]: e.target.value }))}
+                                                className="w-full border border-gold/20 px-3 py-2 text-sm text-brown placeholder-brown-light/50 focus:outline-none focus:border-gold/50"
+                                            />
+                                        </div>
+                                    </div>
+                                )
+                            })}
+
                             <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={() => returnMutation.mutate()}
-                                    disabled={returnMutation.isPending}
+                                    disabled={returnMutation.isPending || !allTotalsValid}
+                                    title={!allTotalsValid ? 'Component quantities must sum to total for each item' : undefined}
                                     className="bg-brown text-cream text-sm px-5 py-2 hover:bg-brown-mid transition-colors disabled:opacity-50"
                                 >
                                     {returnMutation.isPending ? 'Saving…' : 'Confirm Return'}
@@ -400,29 +593,40 @@ function BookingDetailPage() {
                                     Cancel
                                 </button>
                             </div>
+                            {returnMutation.isError && (
+                                <p className="text-xs text-red-600">{returnMutation.error.message}</p>
+                            )}
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {booking.bookingItems.map(item => (
-                                <div key={item.id} className="flex items-center justify-between py-3 border-b border-gold/10 last:border-0">
-                                    <div>
-                                        <p className="font-serif text-brown">{item.productName}</p>
-                                        {item.productColour && (
-                                            <p className="text-xs text-brown-light mt-0.5">{item.productColour}</p>
-                                        )}
-                                        <p className="text-xs text-brown-light font-mono mt-0.5">Item {item.inventoryItemId.slice(0, 8)}</p>
-                                        {item.returnNotes && (
-                                            <p className="text-xs text-brown-mid mt-1 italic">"{item.returnNotes}"</p>
-                                        )}
+                                <div key={item.id} className="py-3 border-b border-gold/10 last:border-0">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <p className="font-serif text-brown">{item.productName}</p>
+                                            {item.productColour && (
+                                                <p className="text-xs text-brown-light mt-0.5">{item.productColour}</p>
+                                            )}
+                                            <p className="text-xs text-brown-light font-mono mt-0.5">
+                                                {item.productSetName ?? item.productSetId.slice(0, 8)}
+                                            </p>
+                                            {item.returnNotes && (
+                                                <p className="text-xs text-brown-mid mt-1 italic">"{item.returnNotes}"</p>
+                                            )}
+                                        </div>
                                     </div>
-                                    {item.returnCondition && (
-                                        <span className={`text-xs px-2 py-1 font-medium ${
-                                            item.returnCondition === 'Good' ? 'bg-green-50 text-green-700' :
-                                            item.returnCondition === 'Damaged' ? 'bg-red-50 text-red-700' :
-                                            'bg-amber-50 text-amber-700'
-                                        }`}>
-                                            {conditionLabel[item.returnCondition]}
-                                        </span>
+                                    {item.returnAssessments && item.returnAssessments.length > 0 && (
+                                        <div className="mt-2 space-y-1 pl-2 border-l-2 border-gold/20">
+                                            {item.returnAssessments.map(ra => (
+                                                <div key={ra.id} className="flex items-center gap-3 text-xs text-brown-light">
+                                                    <span className="w-32">{ra.setItemName}</span>
+                                                    {ra.quantityGood > 0 && <span className="text-green-700">{ra.quantityGood} good</span>}
+                                                    {ra.quantityDamaged > 0 && <span className="text-amber-700">{ra.quantityDamaged} damaged</span>}
+                                                    {ra.quantityMissing > 0 && <span className="text-red-600">{ra.quantityMissing} missing</span>}
+                                                    {ra.replacedAt && <span className="text-brown-light">✓ replaced</span>}
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             ))}
@@ -440,12 +644,12 @@ function BookingDetailPage() {
                             {order.status === 'Cancelled' && order.cancellationReason && (
                                 <Detail label="Cancellation Reason" value={order.cancellationReason} />
                             )}
-                            {(order.status === 'Completed' || order.status === 'Cancelled') && order.paymentStatus === 'Paid' && (
+                            {(order.status === 'Completed' || order.status === 'Cancelled' || order.status === 'PendingMissingItems') && order.paymentStatus === 'Paid' && (
                                 <Detail label="Refund" value={
                                     order.refundStatus === 'FullyRefunded' ? `Fully refunded — $${order.amountRefunded?.toFixed(2)}` :
                                     order.refundStatus === 'DepositRefunded' ? `Deposit refunded — $${order.amountRefunded?.toFixed(2)}` :
                                     order.refundStatus === 'DepositPartiallyRefunded' ? `Partial refund — $${order.amountRefunded?.toFixed(2)}` :
-                                    'No refund issued'
+                                    'Refund pending'
                                 } />
                             )}
                             <Detail label="Customer" value={order.customerName} />

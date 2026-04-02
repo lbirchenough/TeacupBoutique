@@ -33,24 +33,28 @@ export interface Photo {
     isFeatured: boolean;
 }
 
-export type Condition = 'New' | 'Good' | 'Fair' | 'Poor';
 export type ItemStatus = 'Available' | 'Maintenance' | 'Retired';
 
-export interface InventoryItem {
+export interface ProductSet {
     id: string;
-    condition: Condition;
+    name: string;
     status: ItemStatus;
-    conditionNotes?: string | null;
-    maintenanceHistory?: string | null;
+}
+
+export interface SetItemDetail {
+    id: string;
+    name: string;
+    quantity: number;
+    depositValuePerUnit: number;
+    spareStock: number;
+    isActive: boolean;
 }
 
 export interface ProductCreateDto {
     name: string;
     description: string;
-    contents?: string;
     colour?: string;
     price: number;
-    depositAmount: number;
     minRentalDays: number;
     maxRentalDays: number;
     bufferDays: number;
@@ -60,16 +64,8 @@ export interface ProductCreateDto {
 
 export interface ProductUpdateDto extends ProductCreateDto {}
 
-export interface InventoryItemUpdateDto {
-    id: string;
-    condition: Condition;
-    status: ItemStatus;
-    conditionNotes?: string;
-    maintenanceHistory?: string;
-}
-
 // Orders (response from API)
-export type OrderStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'AwaitingPayment' | 'OutOfStock'
+export type OrderStatus = 'Pending' | 'Confirmed' | 'Completed' | 'Cancelled' | 'AwaitingPayment' | 'OutOfStock' | 'PendingMissingItems'
 export type PaymentStatus = 'Pending' | 'Paid'
 export type RefundStatus = 'None' | 'DepositRefunded' | 'DepositPartiallyRefunded' | 'FullyRefunded'
 
@@ -120,34 +116,30 @@ export interface OrderItemDetail {
 
 // Bookings
 export type BookingStatus = 'Reserved' | 'Confirmed' | 'CheckedOut' | 'Returned' | 'Completed' | 'Cancelled'
-export type ReturnCondition = 'Good' | 'Damaged' | 'MissingItems'
 
-export interface BookingListItem {
+export interface ReturnAssessmentDetail {
     id: string
-    orderId: string
-    reservationDate: string
-    status: BookingStatus
-    reservedAt: string
-    confirmedAt?: string | null
-    checkedOutAt?: string | null
-    returnedAt?: string | null
-    completedAt?: string | null
-    notes?: string | null
-    createdAt: string
-    itemCount: number
+    setItemId: string
+    setItemName?: string | null
+    quantityGood: number
+    quantityDamaged: number
+    quantityMissing: number
+    replacedAt?: string | null
+    quantityCustomerReturned: number
 }
 
 export interface BookingItemDetail {
     id: string
     reservationDate: string
-    returnCondition?: ReturnCondition | null
     returnNotes?: string | null
     returnedAt?: string | null
     completedAt?: string | null
     productId: string
     productName: string
     productColour?: string | null
-    inventoryItemId: string
+    productSetId: string
+    productSetName?: string | null
+    returnAssessments?: ReturnAssessmentDetail[]
 }
 
 export interface BookingDetail {
@@ -164,7 +156,59 @@ export interface BookingDetail {
     completionNotes?: string | null
     depositAmountKept?: number | null
     createdAt: string
+    setItemsByBookingItem?: Record<string, SetItemDetail[]>
     bookingItems: BookingItemDetail[]
+}
+
+export interface BookingListItem {
+    id: string
+    orderId: string
+    reservationDate: string
+    status: BookingStatus
+    reservedAt: string
+    confirmedAt?: string | null
+    checkedOutAt?: string | null
+    returnedAt?: string | null
+    completedAt?: string | null
+    notes?: string | null
+    createdAt: string
+    itemCount: number
+}
+
+export interface MaintenanceComponentDetail {
+    setItemId: string
+    setItemName?: string | null
+    totalDamaged: number
+    totalMissing: number
+    spareStockAvailable: number
+}
+
+export interface MaintenanceQueueItem {
+    productSetId: string
+    productSetName?: string | null
+    productId: string
+    productName?: string | null
+    bookingId: string
+    returnedAt?: string | null
+    isCleaned: boolean
+    components: MaintenanceComponentDetail[]
+    upcomingBookings: { reservationDate: string; daysUntil: number }[]
+    nextBookingDays?: number | null
+}
+
+export interface SpareStockItem {
+    id: string
+    setItemId: string
+    setItemName: string
+    productId: string
+    productName: string
+    quantityAvailable: number
+}
+
+export interface SetItemCreateDto {
+    name: string
+    quantity: number
+    depositValuePerUnit: number
 }
 
 // Availability

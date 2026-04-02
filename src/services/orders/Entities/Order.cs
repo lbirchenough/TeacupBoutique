@@ -11,7 +11,8 @@ public enum OrderStatus
     Confirmed,
     Completed,
     Cancelled,
-    OutOfStock
+    OutOfStock,
+    PendingMissingItems
 }
 
 public enum PaymentStatus

@@ -17,10 +17,9 @@ namespace inventory.Controllers
             {
                 Name = dto.Name,
                 Description = dto.Description,
-                Contents = dto.Contents,
                 Colour = dto.Colour,
                 Price = dto.Price,
-                DepositAmount = dto.DepositAmount,
+                Contents = null,
                 CreatedAt = DateTime.UtcNow,
                 MinRentalDays = dto.MinRentalDays,
                 MaxRentalDays = dto.MaxRentalDays,
@@ -38,30 +37,27 @@ namespace inventory.Controllers
         [HttpGet]
         public async Task<IActionResult> GetProducts()
         {
-            //AsNoTracking() tells EF Core to load entities as read-only: it doesn’t create a snapshot of them or put them in the change tracker.
-            // This is the correct way to get the products with the featured photo url
-            // Using the select projection, entity framework doesn't load the full product and photo entities into memory.
-            // Instead, it loads only the necessary data for the projection.
             var products = await _context.Products
-                .Select(p => new ProductListDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Colour = p.Colour,
-                    Price = p.Price,
-                    DepositAmount = p.DepositAmount,
-                    Servings = p.Servings,
-                    Contents = p.Contents,
-                    FeaturedPhotoUrl = p.Photos
-                        .Where(ph => ph.IsFeatured)
-                        .Select(ph => ph.Url)
-                        .FirstOrDefault()
-                })
+                .Include(p => p.SetItems!.Where(si => si.IsActive))
+                .Include(p => p.Photos)
                 .AsNoTracking()
                 .ToListAsync();
 
-            return Ok(products);
+            return Ok(products.Select(p => new ProductListDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Colour = p.Colour,
+                Price = p.Price,
+                DepositAmount = p.SetItems!.Sum(si => si.Quantity * si.DepositValuePerUnit),
+                Servings = p.Servings,
+                Contents = p.SetItems!.Any() ? string.Join('\n', p.SetItems!.Select(si => $"{si.Quantity} x {si.Name}")) : null,
+                FeaturedPhotoUrl = p.Photos?
+                    .Where(ph => ph.IsFeatured)
+                    .Select(ph => ph.Url)
+                    .FirstOrDefault()
+            }));
         }
 
         [HttpGet("{productId}")]
@@ -69,34 +65,35 @@ namespace inventory.Controllers
         {
             var product = await _context.Products
                 .Where(p => p.Id == productId)
-                .Select(p => new ProductDetailDto
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    Description = p.Description,
-                    Contents = p.Contents,
-                    Colour = p.Colour,
-                    Price = p.Price,
-                    DepositAmount = p.DepositAmount,
-                    Servings = p.Servings,
-                    MinRentalDays = p.MinRentalDays,
-                    MaxRentalDays = p.MaxRentalDays,
-                    BufferDays = p.BufferDays,
-                    IsActive = p.IsActive,
-                    Photos = p.Photos!.Select(ph => new ProductPhotoDto
-                    {
-                        Id = ph.Id,
-                        Url = ph.Url,
-                        IsFeatured = ph.IsFeatured,
-                        DisplayOrder = ph.DisplayOrder
-                    }).ToList()
-                })
+                .Include(p => p.SetItems!.Where(si => si.IsActive))
+                .Include(p => p.Photos)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
             if (product == null) return NotFound();
 
-            return Ok(product);
+            return Ok(new ProductDetailDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Description = product.Description,
+                Contents = product.SetItems!.Any() ? string.Join('\n', product.SetItems!.Select(si => $"{si.Quantity} x {si.Name}")) : null,
+                Colour = product.Colour,
+                Price = product.Price,
+                DepositAmount = product.SetItems!.Sum(si => si.Quantity * si.DepositValuePerUnit),
+                Servings = product.Servings,
+                MinRentalDays = product.MinRentalDays,
+                MaxRentalDays = product.MaxRentalDays,
+                BufferDays = product.BufferDays,
+                IsActive = product.IsActive,
+                Photos = product.Photos?.Select(ph => new ProductPhotoDto
+                {
+                    Id = ph.Id,
+                    Url = ph.Url,
+                    IsFeatured = ph.IsFeatured,
+                    DisplayOrder = ph.DisplayOrder
+                }).ToList() ?? []
+            });
         }
 
         [HttpPut("{productId}")]
@@ -109,29 +106,24 @@ namespace inventory.Controllers
                 return NotFound();
             }
 
-            // Update properties
             product.Name = updateDto.Name;
             product.Description = updateDto.Description;
             product.Colour = updateDto.Colour;
             product.Price = updateDto.Price;
             product.Servings = updateDto.Servings;
-            product.DepositAmount = updateDto.DepositAmount;
             product.MinRentalDays = updateDto.MinRentalDays;
             product.MaxRentalDays = updateDto.MaxRentalDays;
             product.BufferDays = updateDto.BufferDays;
             product.IsActive = updateDto.IsActive;
-            product.Contents = updateDto.Contents;
-
 
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        [HttpGet("{productId}/items")]
-        public async Task<IActionResult> GetProductItems(Guid productId)
+        [HttpGet("{productId}/sets")]
+        public async Task<IActionResult> GetProductSets(Guid productId)
         {
-            //Just check if the product exists without actually returning the product entity just true/false
             var productExists = await _context.Products
                 .AsNoTracking()
                 .AnyAsync(p => p.Id == productId);
@@ -141,18 +133,66 @@ namespace inventory.Controllers
                 return NotFound();
             }
 
-            //Query the inventoryitems table filtering on product id
-            //Note: Added ProductID as a property in addition to the Proudct navigation property in the InventoryItem entity to allow filtering on product id without needing SQL Join
-            var items = await _context.InventoryItems
-                // .Where(i => i.Product.Id == id)
-                .Where(i => i.ProductId == productId)
-                .Select(i => new InventoryItemsDto
+            var sets = await _context.ProductSets
+                .Where(ps => ps.ProductId == productId)
+                .Select(ps => new ProductSetDto
                 {
-                    Id = i.Id,
-                    Condition = i.Condition,
-                    Status = i.Status,
-                    ConditionNotes = i.ConditionNotes,
-                    MaintenanceHistory = i.MaintenanceHistory
+                    Id = ps.Id,
+                    Name = ps.Name,
+                    Status = ps.Status
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            return Ok(sets);
+        }
+
+        [HttpPost("{productId}/sets")]
+        public async Task<IActionResult> CreateProductSet(Guid productId)
+        {
+            var product = await _context.Products.FindAsync(productId);
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            var existingCount = await _context.ProductSets
+                .CountAsync(ps => ps.ProductId == productId);
+
+            var setLabel = (char)('A' + existingCount);
+            var productSet = new ProductSet
+            {
+                ProductId = productId,
+                Product = product,
+                Name = $"Set {setLabel}",
+                Status = Status.Available
+            };
+
+            _context.ProductSets.Add(productSet);
+            await _context.SaveChangesAsync();
+
+            return StatusCode(StatusCodes.Status201Created);
+        }
+
+        [HttpGet("{productId}/set-items")]
+        public async Task<IActionResult> GetSetItems(Guid productId)
+        {
+            var productExists = await _context.Products
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == productId);
+
+            if (!productExists) return NotFound();
+
+            var items = await _context.SetItems
+                .Where(si => si.ProductId == productId)
+                .Select(si => new
+                {
+                    si.Id,
+                    si.Name,
+                    si.Quantity,
+                    si.DepositValuePerUnit,
+                    SpareStock = si.SpareStock != null ? si.SpareStock.QuantityAvailable : 0,
+                    si.IsActive
                 })
                 .AsNoTracking()
                 .ToListAsync();
@@ -160,52 +200,60 @@ namespace inventory.Controllers
             return Ok(items);
         }
 
-        [HttpGet("{productId}/items/{itemId}")]
-        public async Task<IActionResult> GetInventoryItem(Guid productId, Guid itemId)
+        [HttpPost("{productId}/set-items")]
+        public async Task<IActionResult> CreateSetItem(Guid productId, [FromBody] SetItemCreateDto dto)
         {
-            var inventoryItem = await _context.InventoryItems
-                .FirstOrDefaultAsync(i => i.Id == itemId && i.ProductId == productId);
-            if (inventoryItem == null)
+            var productExists = await _context.Products
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == productId);
+
+            if (!productExists) return NotFound();
+
+            var setItem = new SetItem
             {
-                return NotFound();
-            }
-            return Ok(inventoryItem);
-        }
+                ProductId = productId,
+                Name = dto.Name,
+                Quantity = dto.Quantity,
+                DepositValuePerUnit = dto.DepositValuePerUnit,
+            };
 
-        [HttpPut("{productId}/items/{itemId}")]
-        public async Task<IActionResult> UpdateInventoryItem(Guid productId, Guid itemId, InventoryItemsDto itemDto)
-        {
+            _context.SetItems.Add(setItem);
 
-            //Just directly query the inventoryitems table filtering on item id and product id
-            var inventoryItem = await _context.InventoryItems
-                .FirstOrDefaultAsync(i => i.Id == itemId && i.ProductId == productId);
-
-            if (inventoryItem == null)
+            var spareStock = new SpareStock
             {
-                return NotFound();
-            }
+                SetItemId = setItem.Id,
+                QuantityAvailable = 0,
+            };
 
-            // Update properties
-            inventoryItem.Condition = itemDto.Condition;
-            inventoryItem.Status = itemDto.Status;
-            inventoryItem.ConditionNotes = itemDto.ConditionNotes;
-            inventoryItem.MaintenanceHistory = itemDto.MaintenanceHistory;
+            _context.SpareStocks.Add(spareStock);
 
             await _context.SaveChangesAsync();
 
+            return StatusCode(StatusCodes.Status201Created);
+        }
+
+        [HttpDelete("{productId}/set-items/{setItemId}")]
+        public async Task<IActionResult> DeactivateSetItem(Guid productId, Guid setItemId)
+        {
+            var setItem = await _context.SetItems
+                .FirstOrDefaultAsync(si => si.Id == setItemId && si.ProductId == productId);
+
+            if (setItem is null) return NotFound();
+
+            setItem.IsActive = false;
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        [HttpDelete("{productId}/items/{itemId}")]
-        public async Task<IActionResult> DeleteInventoryItem(Guid productId, Guid itemId)
+        [HttpPut("{productId}/set-items/{setItemId}/activate")]
+        public async Task<IActionResult> ActivateSetItem(Guid productId, Guid setItemId)
         {
-            var inventoryItem = await _context.InventoryItems
-                .FirstOrDefaultAsync(i => i.Id == itemId && i.ProductId == productId);
-            if (inventoryItem == null)
-            {
-                return NotFound();
-            }
-            _context.InventoryItems.Remove(inventoryItem);
+            var setItem = await _context.SetItems
+                .FirstOrDefaultAsync(si => si.Id == setItemId && si.ProductId == productId);
+
+            if (setItem is null) return NotFound();
+
+            setItem.IsActive = true;
             await _context.SaveChangesAsync();
             return NoContent();
         }
@@ -220,7 +268,7 @@ namespace inventory.Controllers
                     p.Id,
                     p.Name,
                     p.Price,
-                    p.DepositAmount,
+                    DepositAmount = p.SetItems!.Where(si => si.IsActive).Sum(si => si.Quantity * si.DepositValuePerUnit),
                     p.Servings,
                     FeaturedPhotoUrl = p.Photos
                         .Where(ph => ph.IsFeatured)
@@ -230,9 +278,9 @@ namespace inventory.Controllers
                 .AsNoTracking()
                 .ToListAsync();
 
-            var totals = await _context.InventoryItems
-                .Where(i => i.Status == Status.Available)
-                .GroupBy(i => i.ProductId)
+            var totals = await _context.ProductSets
+                .Where(ps => ps.Status != Status.Retired)
+                .GroupBy(ps => ps.ProductId)
                 .Select(g => new { ProductId = g.Key, Total = g.Count() })
                 .ToListAsync();
 
@@ -263,38 +311,7 @@ namespace inventory.Controllers
 
             return Ok(result);
         }
-
-        [HttpPost("{productId}/items")]
-        public async Task<IActionResult> CreateInventoryItem(Guid productId)
-        {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null)
-            {
-                return NotFound();
-            }
-
-            var inventoryItem = new InventoryItem
-            {
-                ProductId = productId,
-                Product = product,
-                SerialNumber = $"AUTO-{Guid.NewGuid():N}",
-                Condition = Condition.New,
-                Status = Status.Available,
-                ConditionNotes = "New item",
-                MaintenanceHistory = "No maintenance history"
-            };
-            _context.InventoryItems.Add(inventoryItem);
-            await _context.SaveChangesAsync();
-
-            // return CreatedAtAction(
-            //     nameof(GetInventoryItem),
-            //     new { productId, itemId = inventoryItem.Id },
-            //     null);
-
-            return StatusCode(StatusCodes.Status201Created);
-        }
-
-
-        
     }
+
+    public record SetItemCreateDto(string Name, int Quantity, decimal DepositValuePerUnit);
 }
