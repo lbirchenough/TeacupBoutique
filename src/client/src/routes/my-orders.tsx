@@ -30,6 +30,7 @@ function OrderRow({ order }: { order: OrderDetail }) {
     <Link
       to="/orders/$orderNumber"
       params={{ orderNumber: order.orderNumber }}
+      search={{ token: undefined }}
       className="block border border-gold/20 bg-white hover:border-gold/50 transition-colors p-5"
     >
       <div className="flex items-start justify-between gap-4">

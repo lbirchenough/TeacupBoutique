@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { ordersApi } from '../lib/ordersApi'
 import { StripePaymentForm } from '../components/StripePaymentForm'
-import type { OrderDetail, OrderStatus, RefundStatus } from '../lib/types'
+import type { OrderDetail, OrderStatus } from '../lib/types'
 
 export const Route = createFileRoute('/orders/$orderNumber')({
     validateSearch: (search: Record<string, unknown>) => ({

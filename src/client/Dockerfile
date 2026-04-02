@@ -3,7 +3,7 @@ WORKDIR /app
 COPY src/client/package.json src/client/package-lock.json ./
 RUN npm ci
 COPY src/client/ .
-RUN npm run build
+RUN npx vite build
 
 FROM nginx:alpine AS final
 COPY --from=build /app/dist /usr/share/nginx/html

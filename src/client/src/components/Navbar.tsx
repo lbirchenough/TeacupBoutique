@@ -106,6 +106,7 @@ export function Navbar() {
                 </Link>
                 <Link
                   to="/register"
+                  search={{ email: undefined }}
                   className="text-xs tracking-widest uppercase border border-brown/30 text-brown px-4 py-2 hover:bg-cream-dark transition-colors"
                 >
                   Register

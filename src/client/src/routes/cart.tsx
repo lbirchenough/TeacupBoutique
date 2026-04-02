@@ -19,7 +19,6 @@ function CartPage() {
 
     const grandTotal = total  // prices are GST-inclusive
     const gst = grandTotal * TAX_RATE
-    const exGst = grandTotal - gst
     const totalDeposit = items.reduce((sum, i) => sum + (i.depositAmount ?? 0) * i.quantity, 0)
     const totalServings = items.reduce((sum, i) => sum + (i.servings ?? 0) * i.quantity, 0)
 
