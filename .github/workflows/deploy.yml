@@ -1,0 +1,99 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: gateway
+            dockerfile: src/gateway/Dockerfile
+          - service: auth
+            dockerfile: src/services/auth/Dockerfile
+          - service: inventory
+            dockerfile: src/services/inventory/Dockerfile
+          - service: orders
+            dockerfile: src/services/orders/Dockerfile
+          - service: payments
+            dockerfile: src/services/payments/Dockerfile
+          - service: notifications
+            dockerfile: src/services/notifications/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/teacupboutique-${{ matrix.service }}:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy compose files to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml,nginx/"
+          target: /opt/teacupboutique
+
+      - name: Run migrations and deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/teacupboutique
+
+            # Pull latest images
+            docker compose -f docker-compose.prod.yml pull
+
+            # Ensure DB infrastructure is up before migrations
+            # (creates the network and starts SQL Server + RabbitMQ if not already running)
+            docker compose -f docker-compose.prod.yml up -d rabbitmq sql-auth sql-inventory sql-orders sql-payments
+
+            # Wait for SQL Server instances to be ready
+            echo ">>> Waiting for SQL Server to be ready..."
+            sleep 30
+
+            # Run database migrations before starting services
+            # Each service image contains an efbundle built during CI
+            for service in auth inventory orders payments; do
+              echo ">>> Migrating $service database..."
+              docker run --rm \
+                --network teacupboutique_default \
+                --env-file /opt/teacupboutique/.secrets/${service}.env \
+                --entrypoint ./efbundle \
+                ghcr.io/lbirchenough/teacupboutique-${service}:latest
+              echo ">>> $service migrations complete"
+            done
+
+            # Start / restart all services
+            docker compose -f docker-compose.prod.yml up -d
+
+            echo ">>> Deployment complete"

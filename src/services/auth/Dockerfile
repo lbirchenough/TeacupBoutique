@@ -24,8 +24,15 @@ FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
 RUN dotnet publish "./auth.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+# This stage builds a self-contained migrations bundle for production deployments
+FROM build AS bundle
+RUN dotnet tool install --global dotnet-ef
+ENV PATH="$PATH:/root/.dotnet/tools"
+RUN dotnet ef migrations bundle --self-contained -r linux-x64 -o /app/efbundle && chmod +x /app/efbundle
+
 # This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+COPY --from=bundle /app/efbundle ./efbundle
 ENTRYPOINT ["dotnet", "auth.dll"]
