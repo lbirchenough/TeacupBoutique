@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { useCart } from '../lib/useCart'
 import { ordersApi } from '../lib/ordersApi'
@@ -16,6 +16,7 @@ const TAX_RATE = 0.1
 function CartPage() {
     const { items, total, count, removeItem, updateQuantity, clear, reservationDate: cartDate } = useCart()
     const navigate = useNavigate()
+    const queryClient = useQueryClient()
 
     const grandTotal = total  // prices are GST-inclusive
     const gst = grandTotal * TAX_RATE
@@ -37,6 +38,7 @@ function CartPage() {
         mutationFn: (dto: CreateOrderRequest) => ordersApi.createOrder(dto),
         onSuccess: (order) => {
             clear()
+            queryClient.invalidateQueries({ queryKey: ['my-orders'] })
             navigate({ to: '/orders/$orderNumber', params: { orderNumber: order.orderNumber }, search: { token: order.accessToken } })
         },
     })

@@ -101,4 +101,7 @@ jobs:
             # Start / restart all services
             docker compose -f docker-compose.prod.yml up -d
 
+            # Always restart nginx so it re-resolves upstream container IPs
+            docker compose -f docker-compose.prod.yml restart nginx
+
             echo ">>> Deployment complete"
