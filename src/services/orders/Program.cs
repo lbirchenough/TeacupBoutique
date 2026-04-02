@@ -27,7 +27,7 @@ builder.Services.AddHttpClient<TurnstileService>();
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<OrdersDbContext>(opt =>
 {
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb"));
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("OrdersDbPostgres"));
 });
 
 

@@ -18,48 +18,44 @@ services:
       - rabbitmq-prod-local-data:/var/lib/rabbitmq
     restart: unless-stopped
 
-  sql-auth:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-auth:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
+      POSTGRES_DB: authdb
     env_file:
-      - ./.secrets/sql-auth.env
-    platform: linux/amd64
+      - ./.secrets/postgres-auth.env
     volumes:
-      - sql-auth-prod-local-data:/var/opt/mssql
+      - postgres-auth-prod-local-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  sql-inventory:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-inventory:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
+      POSTGRES_DB: inventorydb
     env_file:
-      - ./.secrets/sql-inventory.env
-    platform: linux/amd64
+      - ./.secrets/postgres-inventory.env
     volumes:
-      - sql-inventory-prod-local-data:/var/opt/mssql
+      - postgres-inventory-prod-local-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  sql-orders:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-orders:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
+      POSTGRES_DB: ordersdb
     env_file:
-      - ./.secrets/sql-orders.env
-    platform: linux/amd64
+      - ./.secrets/postgres-orders.env
     volumes:
-      - sql-orders-prod-local-data:/var/opt/mssql
+      - postgres-orders-prod-local-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  sql-payments:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-payments:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
+      POSTGRES_DB: paymentsdb
     env_file:
-      - ./.secrets/sql-payments.env
-    platform: linux/amd64
+      - ./.secrets/postgres-payments.env
     volumes:
-      - sql-payments-prod-local-data:/var/opt/mssql
+      - postgres-payments-prod-local-data:/var/lib/postgresql/data
     restart: unless-stopped
 
   # ── Services ─────────────────────────────────────────────────────────────────
@@ -76,7 +72,7 @@ services:
     env_file:
       - ./.secrets/auth.env
     depends_on:
-      - sql-auth
+      - postgres-auth
       - rabbitmq
     restart: unless-stopped
 
@@ -91,7 +87,7 @@ services:
     env_file:
       - ./.secrets/inventory.env
     depends_on:
-      - sql-inventory
+      - postgres-inventory
       - rabbitmq
     restart: unless-stopped
 
@@ -106,7 +102,7 @@ services:
     env_file:
       - ./.secrets/orders.env
     depends_on:
-      - sql-orders
+      - postgres-orders
       - rabbitmq
     restart: unless-stopped
 
@@ -121,7 +117,7 @@ services:
     env_file:
       - ./.secrets/payments.env
     depends_on:
-      - sql-payments
+      - postgres-payments
       - rabbitmq
     restart: unless-stopped
 
@@ -146,7 +142,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
-      - Cors__AllowedOrigins=http://localhost:5173
+      - Cors__AllowedOrigins=http://localhost:5173,http://localhost:3000
     env_file:
       - ./.secrets/gateway.env
     ports:
@@ -168,7 +164,7 @@ services:
 
 volumes:
   rabbitmq-prod-local-data:
-  sql-auth-prod-local-data:
-  sql-inventory-prod-local-data:
-  sql-orders-prod-local-data:
-  sql-payments-prod-local-data:
+  postgres-auth-prod-local-data:
+  postgres-inventory-prod-local-data:
+  postgres-orders-prod-local-data:
+  postgres-payments-prod-local-data:

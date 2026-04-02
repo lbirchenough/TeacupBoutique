@@ -7,10 +7,10 @@ echo ">>> Building images..."
 $COMPOSE build
 
 echo ">>> Starting infrastructure..."
-$COMPOSE up -d sql-auth sql-inventory sql-orders sql-payments rabbitmq
+$COMPOSE up -d postgres-auth postgres-inventory postgres-orders postgres-payments rabbitmq
 
-echo ">>> Waiting 30s for SQL Server to be ready..."
-sleep 30
+echo ">>> Waiting 20s for Postgres to be ready..."
+sleep 20
 
 echo ">>> Running migrations..."
 $COMPOSE run --rm --entrypoint ./efbundle auth

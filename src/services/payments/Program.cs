@@ -13,7 +13,7 @@ var config = builder.Configuration;
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<PaymentsDbContext>(options =>
-    options.UseSqlServer(config.GetConnectionString("PaymentsDb")));
+    options.UseNpgsql(config.GetConnectionString("PaymentsDbPostgres")));
 
 StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
 
