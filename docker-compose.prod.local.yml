@@ -158,6 +158,14 @@ services:
       - payments
     restart: unless-stopped
 
+  client:
+    build:
+      context: .
+      dockerfile: src/client/Dockerfile
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
 volumes:
   rabbitmq-prod-local-data:
   sql-auth-prod-local-data:

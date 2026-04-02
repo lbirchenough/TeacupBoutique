@@ -1,6 +1,6 @@
 import type { ProductAvailabilityDto, ProductCreateDto, ProductUpdateDto, SetItemCreateDto } from './types'
 
-const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5054'
+const INVENTORY_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5054'
 
 async function handleResponse(response: Response) {
     if (!response.ok) {

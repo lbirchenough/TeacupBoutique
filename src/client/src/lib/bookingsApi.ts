@@ -1,7 +1,7 @@
 import { authStore } from './authStore'
 import type { BookingDetail, BookingListItem, MaintenanceQueueItem, SpareStockItem } from './types'
 
-const INVENTORY_API_BASE_URL = import.meta.env.VITE_INVENTORY_API_URL || 'http://localhost:5054'
+const INVENTORY_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5054'
 
 export interface SetItemAssessmentDto {
     setItemId: string

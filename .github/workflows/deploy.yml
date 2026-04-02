@@ -25,6 +25,8 @@ jobs:
             dockerfile: src/services/payments/Dockerfile
           - service: notifications
             dockerfile: src/services/notifications/Dockerfile
+          - service: client
+            dockerfile: src/client/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
