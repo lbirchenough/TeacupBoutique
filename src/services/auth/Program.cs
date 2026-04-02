@@ -21,11 +21,10 @@ builder.Services.AddHttpClient<TurnstileService>();
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 
-// 1) EF Core + SQLite
+// 1) EF Core + PostgreSQL
 builder.Services.AddDbContext<AuthDbContext>(opt =>
 {
-    //opt.UseSqlite(builder.Configuration.GetConnectionString("AuthDb"));
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("AuthDb"));
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("AuthDbPostgres"));
 });
 
 // 2) Identity Core (no UI)

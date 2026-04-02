@@ -19,7 +19,7 @@ builder.Services.AddScoped<InventoryEventService>();
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<InventoryDbContext>(opt =>
 {
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("InventoryDb"));
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("InventoryDbPostgres"));
 });
 
 builder.Services.AddControllers()

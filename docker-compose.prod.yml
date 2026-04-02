@@ -11,52 +11,44 @@ services:
       - rabbitmq-data:/var/lib/rabbitmq
     restart: unless-stopped
 
-  sql-auth:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-auth:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_MEMORY_LIMIT_MB: "512"
+      POSTGRES_DB: authdb
     env_file:
-      - /opt/teacupboutique/.secrets/sql-auth.env
-    platform: linux/amd64
+      - /opt/teacupboutique/.secrets/postgres-auth.env
     volumes:
-      - sql-auth-data:/var/opt/mssql
+      - postgres-auth-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  sql-inventory:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-inventory:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_MEMORY_LIMIT_MB: "512"
+      POSTGRES_DB: inventorydb
     env_file:
-      - /opt/teacupboutique/.secrets/sql-inventory.env
-    platform: linux/amd64
+      - /opt/teacupboutique/.secrets/postgres-inventory.env
     volumes:
-      - sql-inventory-data:/var/opt/mssql
+      - postgres-inventory-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  sql-orders:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-orders:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_MEMORY_LIMIT_MB: "512"
+      POSTGRES_DB: ordersdb
     env_file:
-      - /opt/teacupboutique/.secrets/sql-orders.env
-    platform: linux/amd64
+      - /opt/teacupboutique/.secrets/postgres-orders.env
     volumes:
-      - sql-orders-data:/var/opt/mssql
+      - postgres-orders-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  sql-payments:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres-payments:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_MEMORY_LIMIT_MB: "512"
+      POSTGRES_DB: paymentsdb
     env_file:
-      - /opt/teacupboutique/.secrets/sql-payments.env
-    platform: linux/amd64
+      - /opt/teacupboutique/.secrets/postgres-payments.env
     volumes:
-      - sql-payments-data:/var/opt/mssql
+      - postgres-payments-data:/var/lib/postgresql/data
     restart: unless-stopped
 
   # ── Services ─────────────────────────────────────────────────────────────────
@@ -71,7 +63,7 @@ services:
     env_file:
       - /opt/teacupboutique/.secrets/auth.env
     depends_on:
-      - sql-auth
+      - postgres-auth
       - rabbitmq
     restart: unless-stopped
 
@@ -84,7 +76,7 @@ services:
     env_file:
       - /opt/teacupboutique/.secrets/inventory.env
     depends_on:
-      - sql-inventory
+      - postgres-inventory
       - rabbitmq
     restart: unless-stopped
 
@@ -97,7 +89,7 @@ services:
     env_file:
       - /opt/teacupboutique/.secrets/orders.env
     depends_on:
-      - sql-orders
+      - postgres-orders
       - rabbitmq
     restart: unless-stopped
 
@@ -110,7 +102,7 @@ services:
     env_file:
       - /opt/teacupboutique/.secrets/payments.env
     depends_on:
-      - sql-payments
+      - postgres-payments
       - rabbitmq
     restart: unless-stopped
 
@@ -163,7 +155,7 @@ services:
 
 volumes:
   rabbitmq-data:
-  sql-auth-data:
-  sql-inventory-data:
-  sql-orders-data:
-  sql-payments-data:
+  postgres-auth-data:
+  postgres-inventory-data:
+  postgres-orders-data:
+  postgres-payments-data:

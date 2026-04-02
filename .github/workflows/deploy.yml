@@ -79,12 +79,12 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
 
             # Ensure DB infrastructure is up before migrations
-            # (creates the network and starts SQL Server + RabbitMQ if not already running)
-            docker compose -f docker-compose.prod.yml up -d rabbitmq sql-auth sql-inventory sql-orders sql-payments
+            # (creates the network and starts Postgres + RabbitMQ if not already running)
+            docker compose -f docker-compose.prod.yml up -d rabbitmq postgres-auth postgres-inventory postgres-orders postgres-payments
 
-            # Wait for SQL Server instances to be ready
-            echo ">>> Waiting for SQL Server to be ready..."
-            sleep 30
+            # Wait for Postgres instances to be ready
+            echo ">>> Waiting for Postgres to be ready..."
+            sleep 20
 
             # Run database migrations before starting services
             # Each service image contains an efbundle built during CI
