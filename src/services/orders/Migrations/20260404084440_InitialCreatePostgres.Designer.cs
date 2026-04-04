@@ -12,7 +12,7 @@ using orders.Data;
 namespace orders.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
-    [Migration("20260402102559_InitialCreatePostgres")]
+    [Migration("20260404084440_InitialCreatePostgres")]
     partial class InitialCreatePostgres
     {
         /// <inheritdoc />

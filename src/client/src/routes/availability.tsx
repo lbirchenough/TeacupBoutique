@@ -301,7 +301,7 @@ function ProductAvailabilityCard({
             {/* Thumbnail */}
             <button
                 onClick={onViewDetails}
-                className="w-24 sm:w-32 bg-cream-dark shrink-0 overflow-hidden"
+                className="w-24 sm:w-32 h-24 sm:h-32 bg-cream-dark shrink-0 overflow-hidden self-center"
             >
                 {product.featuredPhotoUrl ? (
                     <img src={product.featuredPhotoUrl} alt={product.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-200" />

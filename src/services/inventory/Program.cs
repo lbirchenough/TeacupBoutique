@@ -15,6 +15,7 @@ builder.Services.AddHostedService<OrderCancelledConsumer>();
 builder.Services.AddHostedService<PaymentSucceededConsumer>();
 builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<InventoryEventService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // 1) EF Core + SqlServer
 builder.Services.AddDbContext<InventoryDbContext>(opt =>

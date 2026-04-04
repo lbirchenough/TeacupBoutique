@@ -1,5 +1,4 @@
-using CloudinaryDotNet;
-using CloudinaryDotNet.Actions;
+using inventory.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace inventory.Controllers
@@ -8,35 +7,23 @@ namespace inventory.Controllers
     [ApiController]
     public class BookingPhotosController : ControllerBase
     {
-        private static readonly HashSet<string> AllowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
-
         [HttpPost]
         public async Task<IActionResult> Upload(Guid bookingId, IFormFile file,
-            [FromServices] IConfiguration config)
+            [FromServices] ICloudinaryService cloudinary)
         {
-            if (!AllowedMimeTypes.Contains(file.ContentType))
-                return BadRequest("Only JPEG, PNG, and WebP images are allowed.");
-
-            var cloudinaryUrl = config["CLOUDINARY_URL"]
-                ?? throw new InvalidOperationException("CLOUDINARY_URL is not configured.");
-
-            var cloudinary = new Cloudinary(cloudinaryUrl);
-            cloudinary.Api.Secure = true;
-
-            using var stream = file.OpenReadStream();
-            var uploadParams = new ImageUploadParams
+            try
             {
-                File = new FileDescription(file.FileName, stream),
-                PublicId = $"bookings/{bookingId}/{Guid.NewGuid()}",
-                Folder = "teacup-boutique"
-            };
-
-            var result = await cloudinary.UploadAsync(uploadParams);
-
-            if (result.Error is not null)
-                return StatusCode(500, result.Error.Message);
-
-            return Ok(new { url = result.SecureUrl.ToString() });
+                var result = await cloudinary.UploadAsync(file, $"bookings/{bookingId}");
+                return Ok(new { url = result.Url });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
     }
 }

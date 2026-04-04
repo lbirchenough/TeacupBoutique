@@ -97,6 +97,7 @@ namespace inventory.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Url = table.Column<string>(type: "text", nullable: false),
+                    PublicId = table.Column<string>(type: "text", nullable: true),
                     IsFeatured = table.Column<bool>(type: "boolean", nullable: false),
                     DisplayOrder = table.Column<int>(type: "integer", nullable: false),
                     ProductId = table.Column<Guid>(type: "uuid", nullable: false)

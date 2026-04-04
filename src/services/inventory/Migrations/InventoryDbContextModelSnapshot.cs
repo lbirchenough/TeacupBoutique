@@ -2,9 +2,8 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using inventory.Data;
 
 #nullable disable
@@ -12,26 +11,24 @@ using inventory.Data;
 namespace inventory.Migrations
 {
     [DbContext(typeof(InventoryDbContext))]
-    [Migration("20260401080702_AddBookingItemComponentSnapshot")]
-    partial class AddBookingItemComponentSnapshot
+    partial class InventoryDbContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "10.0.3")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("ProductTag", b =>
                 {
                     b.Property<Guid>("ProductsId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("TagsId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.HasKey("ProductsId", "TagsId");
 
@@ -44,49 +41,46 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CheckedOutAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("CleanedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CompletionNotes")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("DepositAmountKept")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("OrderId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateOnly>("ReservationDate")
                         .HasColumnType("date");
 
                     b.Property<DateTime>("ReservedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("ReturnedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -97,34 +91,34 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("BookingId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("ProductSetId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateOnly>("ReservationDate")
                         .HasColumnType("date");
 
                     b.Property<string>("ReturnNotes")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("ReturnedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -141,23 +135,23 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("BookingItemId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("DepositValuePerUnit")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("SetItemId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -172,14 +166,14 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -193,20 +187,23 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("DisplayOrder")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsFeatured")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PublicId")
+                        .HasColumnType("text");
 
                     b.Property<string>("Url")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -219,48 +216,48 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("BufferDays")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("CategoryId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Colour")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Contents")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("DepositAmount")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean");
 
                     b.Property<int>("MaxRentalDays")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("MinRentalDays")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<int>("Servings")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -355,20 +352,23 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CleanedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -423,31 +423,31 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("BookingItemId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("QuantityCustomerReturned")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("QuantityDamaged")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("QuantityGood")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<int>("QuantityMissing")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("ReplacedAt")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("SetItemId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -462,20 +462,23 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("DepositValuePerUnit")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("ProductId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -488,6 +491,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333301"),
                             DepositValuePerUnit = 25.00m,
+                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111101"),
                             Quantity = 1
@@ -496,6 +500,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333302"),
                             DepositValuePerUnit = 8.00m,
+                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111101"),
                             Quantity = 6
@@ -504,6 +509,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333303"),
                             DepositValuePerUnit = 7.00m,
+                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111101"),
                             Quantity = 1
@@ -512,6 +518,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333304"),
                             DepositValuePerUnit = 30.00m,
+                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111102"),
                             Quantity = 1
@@ -520,6 +527,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333305"),
                             DepositValuePerUnit = 10.00m,
+                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111102"),
                             Quantity = 4
@@ -528,6 +536,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333306"),
                             DepositValuePerUnit = 30.00m,
+                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111102"),
                             Quantity = 1
@@ -536,6 +545,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333307"),
                             DepositValuePerUnit = 30.00m,
+                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111103"),
                             Quantity = 1
@@ -544,6 +554,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333308"),
                             DepositValuePerUnit = 8.00m,
+                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111103"),
                             Quantity = 8
@@ -552,6 +563,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333309"),
                             DepositValuePerUnit = 26.00m,
+                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111103"),
                             Quantity = 1
@@ -560,6 +572,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333310"),
                             DepositValuePerUnit = 25.00m,
+                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111104"),
                             Quantity = 1
@@ -568,6 +581,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333311"),
                             DepositValuePerUnit = 8.00m,
+                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111104"),
                             Quantity = 4
@@ -576,6 +590,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333312"),
                             DepositValuePerUnit = 13.00m,
+                            IsActive = true,
                             Name = "Plates & Stand",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111104"),
                             Quantity = 1
@@ -584,6 +599,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333313"),
                             DepositValuePerUnit = 35.00m,
+                            IsActive = true,
                             Name = "Teapot",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111105"),
                             Quantity = 1
@@ -592,6 +608,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333314"),
                             DepositValuePerUnit = 12.00m,
+                            IsActive = true,
                             Name = "Teacups & Saucers",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111105"),
                             Quantity = 6
@@ -600,6 +617,7 @@ namespace inventory.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333315"),
                             DepositValuePerUnit = 33.00m,
+                            IsActive = true,
                             Name = "Plates & Accessories",
                             ProductId = new Guid("11111111-1111-1111-1111-111111111105"),
                             Quantity = 1
@@ -610,13 +628,13 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<int>("QuantityAvailable")
-                        .HasColumnType("int");
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("SetItemId")
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -722,11 +740,11 @@ namespace inventory.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

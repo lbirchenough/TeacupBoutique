@@ -1,11 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { inventoryApi } from '../lib/inventoryApi'
 import { ProductForm } from '../components/ProductForm'
-import { cartStore } from '../lib/cartStore'
 import { useAuth } from '../lib/useAuth'
-import type { ProductCreateDto, ProductListDto } from '../lib/types'
+import type { Photo, ProductCreateDto, ProductListDto } from '../lib/types'
 
 const FALLBACK_IMAGES = [
     '/jean-pierre-brungs-3XoiSqiX5ms-unsplash.jpg',
@@ -22,6 +21,7 @@ export const Route = createFileRoute('/products/')({
 function ProductsPage() {
     const queryClient = useQueryClient()
     const [showForm, setShowForm] = useState(false)
+    const [lightboxProduct, setLightboxProduct] = useState<ProductListDto | null>(null)
     const { isAdmin, accessToken } = useAuth()
 
     const { isPending, isError, data, error } = useQuery<ProductListDto[]>({
@@ -93,28 +93,22 @@ function ProductsPage() {
                 {/* Alternating offset cards */}
                 <div className="space-y-16 py-4">
                     {data?.map((product, i) => (
-                        <CollectionCard key={product.id} product={product} reverse={i % 2 !== 0} index={i} />
+                        <CollectionCard key={product.id} product={product} reverse={i % 2 !== 0} index={i} onImageClick={() => setLightboxProduct(product)} />
                     ))}
                 </div>
             </div>
+
+            {lightboxProduct && (
+                <PhotoLightbox
+                    product={lightboxProduct}
+                    onClose={() => setLightboxProduct(null)}
+                />
+            )}
         </div>
     )
 }
 
-function CollectionCard({ product, reverse, index }: { product: ProductListDto; reverse: boolean; index: number }) {
-    function handleAddToCart(e: React.MouseEvent) {
-        e.preventDefault()
-        cartStore.addItem({
-            productId: product.id,
-            name: product.name,
-            pricePerDay: product.price,
-            depositAmount: product.depositAmount,
-            servings: product.servings,
-            quantity: 1,
-            colour: product.colour,
-            imageUrl: product.featuredPhotoUrl,
-        })
-    }
+function CollectionCard({ product, reverse, index, onImageClick }: { product: ProductListDto; reverse: boolean; index: number; onImageClick: () => void }) {
 
     // Alternating horizontal offset — even cards push right, odd push left
     const offsetClass = reverse ? '-translate-x-6' : 'translate-x-6'
@@ -148,11 +142,19 @@ function CollectionCard({ product, reverse, index }: { product: ProductListDto; 
             )}
 
             {/* Image — self-stretch so it fills the full card height */}
-            <div className="md:w-[45%] self-stretch bg-cream-dark overflow-hidden shrink-0 relative min-h-72">
+            <div
+                className="md:w-[45%] self-stretch bg-cream-dark overflow-hidden shrink-0 relative min-h-72 cursor-zoom-in"
+                onClick={e => { e.preventDefault(); onImageClick() }}
+            >
                 {/* Colour/style tag */}
                 {product.colour && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-brown/80 text-cream px-4 py-1 text-xs tracking-widest uppercase">
                         {product.colour}
+                    </div>
+                )}
+                {(product.photos?.length ?? 0) > 1 && (
+                    <div className="absolute bottom-3 right-3 z-10 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                        {product.photos!.length} photos
                     </div>
                 )}
                 <img
@@ -212,14 +214,106 @@ function CollectionCard({ product, reverse, index }: { product: ProductListDto; 
 
                 {/* CTA button — pushed to bottom */}
                 <div className="mt-auto">
-                    <button
-                        onClick={handleAddToCart}
-                        className="w-full bg-brown text-cream py-4 text-xs font-semibold tracking-[0.2em] uppercase hover:bg-brown-mid transition-colors"
+                    <Link
+                        to="/availability"
+                        onClick={e => e.stopPropagation()}
+                        className="w-full bg-brown text-cream py-4 text-xs font-semibold tracking-[0.2em] uppercase hover:bg-brown-mid transition-colors block text-center"
                     >
-                        Book This Collection
-                    </button>
+                        Check Availability
+                    </Link>
                 </div>
             </div>
         </Link>
+    )
+}
+
+function PhotoLightbox({ product, onClose }: { product: ProductListDto; onClose: () => void }) {
+    const photos: Photo[] = product.photos?.length
+        ? product.photos
+        : product.featuredPhotoUrl
+            ? [{ id: 'fallback', url: product.featuredPhotoUrl, isFeatured: true, displayOrder: 0 }]
+            : []
+
+    const initialIndex = photos.findIndex(p => p.isFeatured)
+    const [index, setIndex] = useState(initialIndex >= 0 ? initialIndex : 0)
+
+    const prev = () => setIndex(i => (i - 1 + photos.length) % photos.length)
+    const next = () => setIndex(i => (i + 1) % photos.length)
+
+    useEffect(() => {
+        function handleKey(e: KeyboardEvent) {
+            if (e.key === 'Escape') onClose()
+            else if (e.key === 'ArrowLeft') prev()
+            else if (e.key === 'ArrowRight') next()
+        }
+        window.addEventListener('keydown', handleKey)
+        return () => window.removeEventListener('keydown', handleKey)
+    }, [onClose])
+
+    if (photos.length === 0) return null
+
+    const current = photos[index]
+
+    return (
+        <div
+            className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4"
+            onClick={onClose}
+        >
+            <div
+                className="relative max-w-3xl w-full bg-black flex flex-col"
+                onClick={e => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-2 bg-brown/90">
+                    <span className="font-serif text-cream text-sm">{product.name}</span>
+                    <div className="flex items-center gap-4">
+                        {photos.length > 1 && (
+                            <span className="text-xs text-cream/70">{index + 1} / {photos.length}</span>
+                        )}
+                        <button onClick={onClose} className="text-cream/70 hover:text-cream text-lg leading-none">×</button>
+                    </div>
+                </div>
+
+                {/* Main image */}
+                <div className="relative bg-black aspect-4/3">
+                    <img
+                        src={current.url}
+                        alt={product.name}
+                        className="absolute inset-0 w-full h-full object-contain"
+                    />
+                    {photos.length > 1 && (
+                        <>
+                            <button
+                                onClick={prev}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-9 h-9 flex items-center justify-center text-lg transition-colors"
+                            >
+                                ‹
+                            </button>
+                            <button
+                                onClick={next}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white w-9 h-9 flex items-center justify-center text-lg transition-colors"
+                            >
+                                ›
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {/* Thumbnail strip */}
+                {photos.length > 1 && (
+                    <div className="flex gap-1.5 p-2 bg-black overflow-x-auto">
+                        {photos.map((photo, i) => (
+                            <button
+                                key={photo.id}
+                                onClick={() => setIndex(i)}
+                                className={`shrink-0 w-14 h-14 overflow-hidden border-2 transition-colors ${i === index ? 'border-gold' : 'border-transparent'}`}
+                            >
+                                <img src={photo.url} alt="" className="w-full h-full object-cover" />
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
     )
 }
