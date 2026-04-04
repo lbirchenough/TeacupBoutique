@@ -12,7 +12,7 @@ using auth.Data;
 namespace auth.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    [Migration("20260402102516_InitialCreatePostgres")]
+    [Migration("20260404084427_InitialCreatePostgres")]
     partial class InitialCreatePostgres
     {
         /// <inheritdoc />

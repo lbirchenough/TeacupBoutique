@@ -11,4 +11,5 @@ public class ProductListDto
     public int Servings { get; set; }
     public string? FeaturedPhotoUrl { get; set; }
     public string? Contents { get; set; }
+    public List<ProductPhotoDto> Photos { get; set; } = [];
 }

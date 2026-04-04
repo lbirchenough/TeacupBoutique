@@ -8,6 +8,7 @@ export interface ProductListDto {
     servings: number;
     featuredPhotoUrl?: string | null;
     contents?: string | null;
+    photos: Photo[];
 }
 
 export interface ProductDetail {
@@ -31,6 +32,7 @@ export interface Photo {
     id: string;
     url: string;
     isFeatured: boolean;
+    displayOrder: number;
 }
 
 export type ItemStatus = 'Available' | 'Maintenance' | 'Retired';
@@ -216,6 +218,7 @@ export interface ProductAvailabilityDto {
     productId: string
     name: string
     featuredPhotoUrl?: string | null
+    photos?: Photo[]
     pricePerDay: number
     depositAmount: number
     servings: number

@@ -92,4 +92,32 @@ export const inventoryApi = {
         const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/availability?date=${date}`)
         return handleResponse(response)
     },
+
+    // Product photos
+    uploadProductPhoto: async (productId: string, file: File, token: string) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/photos`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData,
+        })
+        return handleResponse(response)
+    },
+
+    deleteProductPhoto: async (productId: string, photoId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/photos/${photoId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+        return handleResponse(response)
+    },
+
+    setFeaturedPhoto: async (productId: string, photoId: string, token: string) => {
+        const response = await fetch(`${INVENTORY_API_BASE_URL}/api/products/${productId}/photos/${photoId}/featured`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+        return handleResponse(response)
+    },
 }
