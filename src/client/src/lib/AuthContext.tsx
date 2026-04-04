@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setToken(data.accessToken)
         }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && !authStore.getAccessToken()) {
           setToken(null)
         }
       } finally {
@@ -68,8 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     runRefresh()
 
+    const interval = setInterval(async () => {
+      try {
+        const data = await authApi.refresh()
+        if (!cancelled) setToken(data.accessToken)
+      } catch {
+        if (!cancelled && !authStore.getAccessToken()) setToken(null)
+      }
+    }, 5 * 60 * 1000) // refresh every 5 minutes
+
     return () => {
       cancelled = true
+      clearInterval(interval)
     }
   }, [])
 

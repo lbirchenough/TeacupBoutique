@@ -131,7 +131,7 @@ export const authApi = {
     }
   },
 
-  verifyEmail: async (params: { email: string; token: string }): Promise<AuthResponse> => {
+  verifyEmail: async (params: { email: string; token: string }): Promise<void> => {
     const url = new URL(`${API_BASE_URL}/api/auth/verify-email`)
     url.searchParams.set('email', params.email)
     url.searchParams.set('token', params.token)
@@ -140,7 +140,6 @@ export const authApi = {
       const message = await response.text()
       throw new Error(message || 'Invalid or expired link')
     }
-    return response.json()
   },
 
   verifyEmailChange: async (params: { newEmail: string; token: string }): Promise<AuthResponse> => {

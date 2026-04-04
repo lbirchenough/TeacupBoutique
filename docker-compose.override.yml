@@ -7,53 +7,97 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
 
-  sql-auth:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      ACCEPT_EULA: "Y"
-    env_file:
-      - ./.secrets/sql-auth.env
-    platform: "linux/amd64"
-    ports:
-      - "1433:1433"
-    volumes:
-      - sql-auth-data:/var/opt/mssql
+  # sql-auth:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #   env_file:
+  #     - ./.secrets/sql-auth.env
+  #   platform: "linux/amd64"
+  #   ports:
+  #     - "1433:1433"
+  #   volumes:
+  #     - sql-auth-data:/var/opt/mssql
 
-  sql-inventory:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      ACCEPT_EULA: "Y"
-    env_file:
-      - ./.secrets/sql-inventory.env
-    platform: "linux/amd64"
-    ports:
-      - "1434:1433"
-    volumes:
-      - sql-inventory-data:/var/opt/mssql
+  # sql-inventory:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #   env_file:
+  #     - ./.secrets/sql-inventory.env
+  #   platform: "linux/amd64"
+  #   ports:
+  #     - "1434:1433"
+  #   volumes:
+  #     - sql-inventory-data:/var/opt/mssql
 
-  sql-orders:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    environment:
-      ACCEPT_EULA: "Y"
-    env_file:
-      - ./.secrets/sql-orders.env
-    platform: "linux/amd64"
-    ports:
-      - "1435:1433"
-    volumes:
-      - sql-orders-data:/var/opt/mssql
+  # sql-orders:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #   env_file:
+  #     - ./.secrets/sql-orders.env
+  #   platform: "linux/amd64"
+  #   ports:
+  #     - "1435:1433"
+  #   volumes:
+  #     - sql-orders-data:/var/opt/mssql
 
-  sql-payments:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  # sql-payments:
+  #   image: mcr.microsoft.com/mssql/server:2022-latest
+  #   environment:
+  #     ACCEPT_EULA: "Y"
+  #   env_file:
+  #     - ./.secrets/sql-payments.env
+  #   platform: "linux/amd64"
+  #   ports:
+  #     - "1436:1433"
+  #   volumes:
+  #     - sql-payments-data:/var/opt/mssql
+
+  postgres-auth:
+    image: postgres:16-alpine
     environment:
-      ACCEPT_EULA: "Y"
+      POSTGRES_DB: authdb
     env_file:
-      - ./.secrets/sql-payments.env
-    platform: "linux/amd64"
+      - ./.secrets/postgres-auth.env
     ports:
-      - "1436:1433"
+      - "5432:5432"
     volumes:
-      - sql-payments-data:/var/opt/mssql
+      - postgres-auth-data:/var/lib/postgresql/data
+
+  postgres-inventory:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: inventorydb
+    env_file:
+      - ./.secrets/postgres-inventory.env
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-inventory-data:/var/lib/postgresql/data
+
+  postgres-orders:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ordersdb
+    env_file:
+      - ./.secrets/postgres-orders.env
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-orders-data:/var/lib/postgresql/data
+
+  postgres-payments:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: paymentsdb
+    env_file:
+      - ./.secrets/postgres-payments.env
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres-payments-data:/var/lib/postgresql/data
 
   auth:
     environment:
@@ -65,7 +109,7 @@ services:
     ports:
       - "5194:8080"
     depends_on:
-      - sql-auth
+      - postgres-auth
       - rabbitmq
 
   inventory:
@@ -78,7 +122,7 @@ services:
     env_file:
       - ./.secrets/inventory.env
     depends_on:
-      - sql-inventory
+      - postgres-inventory
       - rabbitmq
 
   orders:
@@ -91,7 +135,7 @@ services:
     env_file:
       - ./.secrets/orders.env
     depends_on:
-      - sql-orders
+      - postgres-orders
       - rabbitmq
 
   payments:
@@ -104,7 +148,7 @@ services:
     env_file:
       - ./.secrets/payments.env
     depends_on:
-      - sql-payments
+      - postgres-payments
       - rabbitmq
 
   gateway:
@@ -134,10 +178,14 @@ services:
       - ./.secrets/notifications.env
     depends_on:
       - rabbitmq
-volumes:
-  sql-auth-data:
-  sql-inventory-data:
-  sql-orders-data:
-  sql-payments-data:
-  rabbitmq-data:
 
+volumes:
+  # sql-auth-data:
+  # sql-inventory-data:
+  # sql-orders-data:
+  # sql-payments-data:
+  postgres-auth-data:
+  postgres-inventory-data:
+  postgres-orders-data:
+  postgres-payments-data:
+  rabbitmq-data:

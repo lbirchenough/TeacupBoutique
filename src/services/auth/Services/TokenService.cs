@@ -31,13 +31,13 @@ public class TokenService(IConfiguration config, UserManager<ApplicationUser> us
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));
 
-        var expiryHours = jwt.GetValue<int?>("AccessTokenExpiryHours") ?? 1;
+        var expiryMinutes = jwt.GetValue<int?>("AccessTokenExpiryMinutes") ?? 6;
 
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(expiryHours),
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

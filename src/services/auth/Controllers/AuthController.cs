@@ -91,7 +91,7 @@ namespace auth.Controllers
         }
 
         [HttpGet("verify-email")]
-        public async Task<ActionResult<AuthResponse>> VerifyEmail([FromQuery] VerifyEmailRequest req)
+        public async Task<IActionResult> VerifyEmail([FromQuery] VerifyEmailRequest req)
         {
             var user = await userManager.FindByEmailAsync(req.Email);
             if (user is null) return BadRequest("Invalid link.");
@@ -100,8 +100,7 @@ namespace auth.Controllers
             if (!result.Succeeded) return BadRequest("Invalid or expired link.");
 
             await userManager.AddToRoleAsync(user, "User");
-            await SetRefreshTokenCookie(user);
-            return Ok(new AuthResponse(await tokenService.CreateAccessToken(user)));
+            return Ok();
         }
 
         [HttpGet("verify-email-change")]

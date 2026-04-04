@@ -21,7 +21,24 @@ public class PaymentProcessorWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var factory = new ConnectionFactory { HostName = config["RabbitMq:Host"] };
-        using var connection = await factory.CreateConnectionAsync(stoppingToken);
+
+        IConnection? connection = null;
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                connection = await factory.CreateConnectionAsync(stoppingToken);
+                break;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning("RabbitMQ not ready, retrying in 5s... ({Message})", ex.Message);
+                await Task.Delay(5000, stoppingToken);
+            }
+        }
+        if (connection is null || stoppingToken.IsCancellationRequested) return;
+        using var _ = connection;
+
         using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
         await channel.QueueDeclareAsync(

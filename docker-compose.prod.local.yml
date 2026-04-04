@@ -129,6 +129,9 @@ services:
       - DOTNET_ENVIRONMENT=Production
       - RabbitMq__Host=rabbitmq
       - FrontendUrl=http://localhost:5173
+      - Mailgun__Domain=mg.teacupboutique.lbirchen.com
+      - Mailgun__FromAddress=noreply@mg.teacupboutique.lbirchen.com
+      - Mailgun__FromName=Teacup Boutique
     env_file:
       - ./.secrets/notifications.env
     depends_on:

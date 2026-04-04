@@ -6,10 +6,14 @@ import { useAuth } from '../lib/useAuth'
 import { ordersApi } from '../lib/ordersApi'
 
 export const Route = createFileRoute('/login')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    verified: search.verified === true,
+  }),
   component: LoginPage,
 })
 
 function LoginPage() {
+  const { verified } = Route.useSearch()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -75,6 +79,11 @@ function LoginPage() {
         {/* Card */}
         <div className="bg-cream border border-gold/20 shadow-lg px-8 py-10">
           <form onSubmit={handleSubmit}>
+            {verified && (
+              <p className="text-sm text-center text-green-800 bg-green-50 border border-green-200 px-4 py-2.5 mb-6">
+                Email verified! Please sign in.
+              </p>
+            )}
             {serverError && (
               <p className="text-sm text-center text-brown-mid bg-gold-pale border border-gold/30 px-4 py-2.5 mb-6">
                 {serverError}

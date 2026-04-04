@@ -5,6 +5,9 @@ namespace notifications.Services;
 
 public class NotificationService(IEmailService emailService, IConfiguration config) : INotificationService
 {
+    private string ResolveRecipient(string actualEmail) =>
+        config["Notifications:DevEmailOverride"] ?? actualEmail;
+
     public async Task SendOrderConfirmedAsync(OrderConfirmedEvent evt)
     {
         var frontendUrl = config["FrontendUrl"] ?? "http://localhost:5173";
@@ -45,8 +48,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            // To = evt.CustomerEmail,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.CustomerEmail),
             ToName = evt.CustomerName,
             Subject = $"Booking Confirmed – {evt.OrderNumber}",
             HtmlBody = html
@@ -86,8 +88,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.CustomerEmail,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.CustomerEmail),
             ToName = evt.CustomerName,
             Subject = $"Booking Cancelled – {evt.OrderNumber}",
             HtmlBody = html
@@ -130,8 +131,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.CustomerEmail,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.CustomerEmail),
             ToName = evt.CustomerName,
             Subject = $"Your booking is complete – {evt.OrderNumber}",
             HtmlBody = html
@@ -158,8 +158,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.OldEmail,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.OldEmail),
             ToName = evt.FullName,
             Subject = "Your email address has been changed",
             HtmlBody = MakeHtml("Email Address Changed", "Your Teacup Boutique account email address has been changed.")
@@ -167,8 +166,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.NewEmail,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.NewEmail),
             ToName = evt.FullName,
             Subject = "Welcome to your new email address",
             HtmlBody = MakeHtml("Email Address Updated", "Your Teacup Boutique account is now linked to this email address.")
@@ -192,8 +190,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.Email,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.Email),
             ToName = evt.Email,
             Subject = "Verify your Teacup Boutique account",
             HtmlBody = html
@@ -220,8 +217,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.Email,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.Email),
             ToName = evt.Email,
             Subject = "Reset your Teacup Boutique password",
             HtmlBody = html
@@ -249,8 +245,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.Email,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.Email),
             ToName = evt.Email,
             Subject = "Your Teacup Boutique password has been changed",
             HtmlBody = html
@@ -276,8 +271,7 @@ public class NotificationService(IEmailService emailService, IConfiguration conf
 
         await emailService.SendAsync(new EmailMessage
         {
-            //To = evt.NewEmail,
-            To = "luke.birchenough@outlook.com",
+            To = ResolveRecipient(evt.NewEmail),
             ToName = evt.NewEmail,
             Subject = "Confirm your new email address — Teacup Boutique",
             HtmlBody = html

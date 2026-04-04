@@ -12,21 +12,42 @@ public interface IWebhookQueue
 public class RabbitMqWebhookQueue : IWebhookQueue, IDisposable
 {
     public const string QueueName = "payments.process-webhook";
-    private readonly IConnection _connection;
+    private readonly ConnectionFactory _factory;
     private readonly ILogger<RabbitMqWebhookQueue> _logger;
+    private IConnection? _connection;
 
     public RabbitMqWebhookQueue(IConfiguration config, ILogger<RabbitMqWebhookQueue> logger)
     {
         _logger = logger;
-        var factory = new ConnectionFactory { HostName = config["RabbitMq:Host"] };
-        _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        using var ch = _connection.CreateChannelAsync().GetAwaiter().GetResult();
-        ch.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter().GetResult();
+        _factory = new ConnectionFactory { HostName = config["RabbitMq:Host"] ?? "localhost" };
+    }
+
+    private async Task EnsureConnectedAsync()
+    {
+        if (_connection is { IsOpen: true }) return;
+
+        while (true)
+        {
+            try
+            {
+                _connection = await _factory.CreateConnectionAsync();
+                using var ch = await _connection.CreateChannelAsync();
+                await ch.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false);
+                _logger.LogInformation("WebhookQueue connected to RabbitMQ");
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("RabbitMQ not ready, retrying in 5s... ({Message})", ex.Message);
+                await Task.Delay(5000);
+            }
+        }
     }
 
     public async Task EnqueueAsync(string stripeEventJson)
     {
-        using var channel = await _connection.CreateChannelAsync();
+        await EnsureConnectedAsync();
+        using var channel = await _connection!.CreateChannelAsync();
         var body = Encoding.UTF8.GetBytes(stripeEventJson);
         var props = new BasicProperties { Persistent = true };
         await channel.BasicPublishAsync(exchange: "", routingKey: QueueName, mandatory: false, basicProperties: props, body: body);

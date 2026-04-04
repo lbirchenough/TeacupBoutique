@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { authApi } from '../lib/api'
-import { useAuth } from '../lib/useAuth'
 
 export const Route = createFileRoute('/verify-email')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -13,25 +12,18 @@ export const Route = createFileRoute('/verify-email')({
 
 function VerifyEmailPage() {
   const { token, email } = Route.useSearch()
-  const { setToken } = useAuth()
   const navigate = useNavigate()
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    !token || !email ? 'Invalid verification link.' : null
+  )
 
   useEffect(() => {
-    if (!token || !email) {
-      setError('Invalid verification link.')
-      return
-    }
+    if (!token || !email) return
 
     authApi.verifyEmail({ token, email })
-      .then(async (data) => {
-        setToken(data.accessToken)
-        navigate({ to: '/' })
-      })
-      .catch((err) => {
-        setError(err.message || 'Invalid or expired link.')
-      })
-  }, [])
+      .then(() => navigate({ to: '/login', search: { verified: true } }))
+      .catch((err) => setError(err.message || 'Invalid or expired link.'))
+  }, [token, email, navigate])
 
   return (
     <div className="px-4 pt-16 pb-16">
