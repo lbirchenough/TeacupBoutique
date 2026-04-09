@@ -14,6 +14,21 @@ The backend consists of five services (`auth`, `gateway`, `inventory`, `orders`,
 
 # Local Development Setup
 
+## Configuration & Secrets Overview
+
+Configuration is split between non-sensitive values committed in `appsettings.Development.json` and secrets which are never committed.
+
+There are two pathways depending on how you run the app:
+
+- **Pathway 1 — Docker Compose:** secrets live in `.secrets/*.env` files (gitignored). Used with `docker compose up`.
+- **Pathway 2 — dotnet run:** secrets are stored via .NET User Secrets outside the repo. Used when running services individually.
+
+The frontend (`src/client`) uses `.env.development` / `.env.production` for public keys (safe to commit), and an optional gitignored `.env.local` for local overrides.
+
+See [Configuration & Secrets Management](#configuration--secrets-management) for the full reference.
+
+---
+
 ## 1. Create Secrets
 
 Secrets are **not committed to the repository**.  
@@ -304,12 +319,6 @@ This removes containers and all database volumes, then rebuilds from scratch.
 ---
 
 # Configuration & Secrets Management
-
-Configuration is split between non-sensitive values committed in `appsettings.Development.json` and secrets which are never committed.
-
-There are two pathways depending on how you run the app.
-
----
 
 ## Pathway 1 — Docker Compose (`.secrets/*.env` files)
 
