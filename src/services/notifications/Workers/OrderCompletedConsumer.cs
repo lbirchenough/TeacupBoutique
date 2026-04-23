@@ -1,19 +1,19 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using notifications.Interfaces;
 using notifications.Models;
 
 namespace notifications.Workers;
 
-public class OrderCompletedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class OrderCompletedConsumer(IServiceScopeFactory scopeFactory, ILogger<OrderCompletedConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "notifications.order-completed";
-    public override string RoutingKey => "orders.OrderCompleted";
+    public string QueueName => "notifications.order-completed";
+    public string RoutingKey => "orders.OrderCompleted";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("OrderCompleted received: {Message}", message);
+        logger.LogDebug("OrderCompleted received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<OrderCompletedEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;

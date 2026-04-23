@@ -1,4 +1,5 @@
 using System.Text;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 
@@ -9,9 +10,15 @@ public interface IWebhookQueue
     Task EnqueueAsync(string stripeEventJson);
 }
 
+public static class WebhookQueueNames
+{
+    // RabbitMQ uses dots; Service Bus also permits dots, so we keep one name.
+    public const string Default = "payments.process-webhook";
+}
+
 public class RabbitMqWebhookQueue : IWebhookQueue, IDisposable
 {
-    public const string QueueName = "payments.process-webhook";
+    public const string QueueName = WebhookQueueNames.Default;
     private readonly ConnectionFactory _factory;
     private readonly ILogger<RabbitMqWebhookQueue> _logger;
     private IConnection? _connection;
@@ -55,4 +62,26 @@ public class RabbitMqWebhookQueue : IWebhookQueue, IDisposable
     }
 
     public void Dispose() => _connection?.Dispose();
+}
+
+public class ServiceBusWebhookQueue : IWebhookQueue, IAsyncDisposable
+{
+    public const string QueueName = WebhookQueueNames.Default;
+    private readonly ServiceBusSender _sender;
+    private readonly ILogger<ServiceBusWebhookQueue> _logger;
+
+    public ServiceBusWebhookQueue(ServiceBusClient client, ILogger<ServiceBusWebhookQueue> logger)
+    {
+        _logger = logger;
+        _sender = client.CreateSender(QueueName);
+    }
+
+    public async Task EnqueueAsync(string stripeEventJson)
+    {
+        var message = new ServiceBusMessage(stripeEventJson);
+        await _sender.SendMessageAsync(message);
+        _logger.LogDebug("Enqueued webhook event to {QueueName}", QueueName);
+    }
+
+    public ValueTask DisposeAsync() => _sender.DisposeAsync();
 }

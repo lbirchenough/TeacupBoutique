@@ -1,19 +1,19 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using notifications.Interfaces;
 using notifications.Models;
 
 namespace notifications.Workers;
 
-public class PasswordResetConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class PasswordResetConsumer(IServiceScopeFactory scopeFactory, ILogger<PasswordResetConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "notifications.password-reset";
-    public override string RoutingKey => "auth.PasswordResetRequested";
+    public string QueueName => "notifications.password-reset";
+    public string RoutingKey => "auth.PasswordResetRequested";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("PasswordResetRequested received: {Message}", message);
+        logger.LogDebug("PasswordResetRequested received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<PasswordResetRequestedEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;

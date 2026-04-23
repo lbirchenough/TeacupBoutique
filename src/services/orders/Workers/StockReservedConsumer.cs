@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
-public class StockReservedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class StockReservedConsumer(IServiceScopeFactory scopeFactory, ILogger<StockReservedConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "orders.stock-reserved";
-    public override string RoutingKey => "inventory.StockReserved";
+    public string QueueName => "orders.stock-reserved";
+    public string RoutingKey => "inventory.StockReserved";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("StockReserved received for orderId: {Message}", message);
+        logger.LogDebug("StockReserved received for orderId: {Message}", message);
 
         using var scope = scopeFactory.CreateScope();
         var orderEventService = scope.ServiceProvider.GetRequiredService<IOrderEvent>();

@@ -3,24 +3,23 @@ using orders.Data;
 using orders.Interfaces;
 using orders.Services;
 using orders.Workers;
-using Messaging.Interfaces;
-using Messaging.Services;
+using Messaging.DependencyInjection;
 
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddHostedService<StockReservedConsumer>();
-builder.Services.AddHostedService<StockUnavailableConsumer>();
-builder.Services.AddHostedService<PaymentSucceededConsumer>();
-builder.Services.AddHostedService<PaymentFailedConsumer>();
-builder.Services.AddHostedService<BookingCancelledConsumer>();
-builder.Services.AddHostedService<BookingCompletedConsumer>();
-builder.Services.AddHostedService<RefundSucceededConsumer>();
-builder.Services.AddHostedService<RefundFailedConsumer>();
-builder.Services.AddHostedService<ReturnAssessedWithMissingItemsConsumer>();
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddConsumer<StockReservedConsumer>();
+builder.Services.AddConsumer<StockUnavailableConsumer>();
+builder.Services.AddConsumer<PaymentSucceededConsumer>();
+builder.Services.AddConsumer<PaymentFailedConsumer>();
+builder.Services.AddConsumer<BookingCancelledConsumer>();
+builder.Services.AddConsumer<BookingCompletedConsumer>();
+builder.Services.AddConsumer<RefundSucceededConsumer>();
+builder.Services.AddConsumer<RefundFailedConsumer>();
+builder.Services.AddConsumer<ReturnAssessedWithMissingItemsConsumer>();
+builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddScoped<IOrderEvent, OrderEventService>();
 builder.Services.AddHttpClient<TurnstileService>();
 

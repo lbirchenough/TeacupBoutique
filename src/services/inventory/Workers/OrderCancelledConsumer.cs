@@ -1,18 +1,18 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using inventory.Services;
 
 namespace inventory.Workers;
 
-public class OrderCancelledConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class OrderCancelledConsumer(IServiceScopeFactory scopeFactory, ILogger<OrderCancelledConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "inventory.order-cancelled";
-    public override string RoutingKey => "orders.OrderCancelled";
+    public string QueueName => "inventory.order-cancelled";
+    public string RoutingKey => "orders.OrderCancelled";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("OrderCancelled received: {Message}", message);
+        logger.LogDebug("OrderCancelled received: {Message}", message);
 
         var payload = JsonSerializer.Deserialize<OrderCancelledPayload>(message);
         if (payload is null) return;

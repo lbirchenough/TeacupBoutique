@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
-public class BookingCancelledConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class BookingCancelledConsumer(IServiceScopeFactory scopeFactory, ILogger<BookingCancelledConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "orders.booking-cancelled";
-    public override string RoutingKey => "inventory.BookingCancelled";
+    public string QueueName => "orders.booking-cancelled";
+    public string RoutingKey => "inventory.BookingCancelled";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("BookingCancelled received: {Message}", message);
+        logger.LogDebug("BookingCancelled received: {Message}", message);
 
         using var scope = scopeFactory.CreateScope();
         var orderEventService = scope.ServiceProvider.GetRequiredService<IOrderEvent>();

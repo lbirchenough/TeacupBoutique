@@ -26,7 +26,6 @@ resource "azurerm_resource_group" "teacupboutique" {
   location = var.location
 }
 
-
 resource "azurerm_log_analytics_workspace" "teacupboutique" {
   name                = "${var.project}-logs"
   resource_group_name = azurerm_resource_group.teacupboutique.name

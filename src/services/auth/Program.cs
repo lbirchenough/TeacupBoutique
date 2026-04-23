@@ -2,8 +2,7 @@ using System.Text;
 using auth.Data;
 using auth.Models;
 using auth.Services;
-using Messaging.Interfaces;
-using Messaging.Services;
+using Messaging.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddHttpClient<TurnstileService>();
 
 

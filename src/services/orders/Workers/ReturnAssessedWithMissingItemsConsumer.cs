@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
-public class ReturnAssessedWithMissingItemsConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class ReturnAssessedWithMissingItemsConsumer(IServiceScopeFactory scopeFactory, ILogger<ReturnAssessedWithMissingItemsConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "orders.return-assessed-missing";
-    public override string RoutingKey => "inventory.ReturnAssessedWithMissingItems";
+    public string QueueName => "orders.return-assessed-missing";
+    public string RoutingKey => "inventory.ReturnAssessedWithMissingItems";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("ReturnAssessedWithMissingItems received: {Message}", message);
+        logger.LogDebug("ReturnAssessedWithMissingItems received: {Message}", message);
 
         using var scope = scopeFactory.CreateScope();
         var orderEventService = scope.ServiceProvider.GetRequiredService<IOrderEvent>();

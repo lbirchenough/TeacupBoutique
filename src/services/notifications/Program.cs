@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Messaging.DependencyInjection;
 using notifications.Interfaces;
 using notifications.Services;
 using notifications.Workers;
@@ -18,15 +19,16 @@ builder.Services.AddHttpClient<IEmailService, MailgunEmailService>(client =>
 
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-builder.Services.AddHostedService<OrderConfirmedConsumer>();
-builder.Services.AddHostedService<PaymentFailedConsumer>();
-builder.Services.AddHostedService<OrderCancelledConsumer>();
-builder.Services.AddHostedService<OrderCompletedConsumer>();
-builder.Services.AddHostedService<EmailChangedConsumer>();
-builder.Services.AddHostedService<PasswordResetConsumer>();
-builder.Services.AddHostedService<EmailVerificationConsumer>();
-builder.Services.AddHostedService<EmailChangeVerificationConsumer>();
-builder.Services.AddHostedService<PasswordChangedConsumer>();
+builder.Services.AddConsumer<OrderConfirmedConsumer>();
+builder.Services.AddConsumer<PaymentFailedConsumer>();
+builder.Services.AddConsumer<OrderCancelledConsumer>();
+builder.Services.AddConsumer<OrderCompletedConsumer>();
+builder.Services.AddConsumer<EmailChangedConsumer>();
+builder.Services.AddConsumer<PasswordResetConsumer>();
+builder.Services.AddConsumer<EmailVerificationConsumer>();
+builder.Services.AddConsumer<EmailChangeVerificationConsumer>();
+builder.Services.AddConsumer<PasswordChangedConsumer>();
+builder.Services.AddMessaging(builder.Configuration);
 
 var host = builder.Build();
 host.Run();

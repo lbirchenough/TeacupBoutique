@@ -1,21 +1,19 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using notifications.Interfaces;
 using notifications.Models;
 
 namespace notifications.Workers;
 
-public class PaymentFailedConsumer(
-    IConfiguration configuration,
-    IServiceScopeFactory scopeFactory,
-    ILoggerFactory loggerFactory) : RabbitMqConsumerBase(configuration, loggerFactory)
+public class PaymentFailedConsumer(IServiceScopeFactory scopeFactory, ILogger<PaymentFailedConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "notifications.payment-failed";
-    public override string RoutingKey => "orders.PaymentFailed";
+    public string QueueName => "notifications.payment-failed";
+    public string RoutingKey => "orders.PaymentFailed";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("PaymentFailed received: {Message}", message);
+        logger.LogDebug("PaymentFailed received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<PaymentFailedEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;

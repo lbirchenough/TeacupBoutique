@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
-public class PaymentSucceededConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class PaymentSucceededConsumer(IServiceScopeFactory scopeFactory, ILogger<PaymentSucceededConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "orders.payment-succeeded";
-    public override string RoutingKey => "payments.PaymentSucceeded";
+    public string QueueName => "orders.payment-succeeded";
+    public string RoutingKey => "payments.PaymentSucceeded";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("PaymentSucceeded received: {Message}", message);
+        logger.LogDebug("PaymentSucceeded received: {Message}", message);
 
         using var scope = scopeFactory.CreateScope();
         var orderEventService = scope.ServiceProvider.GetRequiredService<IOrderEvent>();

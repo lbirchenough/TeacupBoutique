@@ -1,19 +1,19 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using inventory.Services;
 using orders.Models;
 
 namespace inventory.Workers;
 
-public class OrderPlacedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class OrderPlacedConsumer(IServiceScopeFactory scopeFactory, ILogger<OrderPlacedConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "inventory.order-placed";
-    public override string RoutingKey => "orders.OrderPlaced";
+    public string QueueName => "inventory.order-placed";
+    public string RoutingKey => "orders.OrderPlaced";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("OrderPlaced received: {Message}", message);
+        logger.LogDebug("OrderPlaced received: {Message}", message);
 
         var order = JsonSerializer.Deserialize<OrderPlacedDto>(message);
         if (order is null) return;

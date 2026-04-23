@@ -1,19 +1,19 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using notifications.Interfaces;
 using notifications.Models;
 
 namespace notifications.Workers;
 
-public class EmailChangeVerificationConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class EmailChangeVerificationConsumer(IServiceScopeFactory scopeFactory, ILogger<EmailChangeVerificationConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "notifications.email-change-verification";
-    public override string RoutingKey => "auth.EmailChangeVerificationRequested";
+    public string QueueName => "notifications.email-change-verification";
+    public string RoutingKey => "auth.EmailChangeVerificationRequested";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("EmailChangeVerificationRequested received: {Message}", message);
+        logger.LogDebug("EmailChangeVerificationRequested received: {Message}", message);
 
         var evt = JsonSerializer.Deserialize<EmailChangeVerificationRequestedEvent>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         if (evt is null) return;

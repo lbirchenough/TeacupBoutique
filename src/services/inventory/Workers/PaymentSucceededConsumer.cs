@@ -1,18 +1,18 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using inventory.Services;
 
 namespace inventory.Workers;
 
-public class PaymentSucceededConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class PaymentSucceededConsumer(IServiceScopeFactory scopeFactory, ILogger<PaymentSucceededConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "inventory.payment-succeeded";
-    public override string RoutingKey => "payments.PaymentSucceeded";
+    public string QueueName => "inventory.payment-succeeded";
+    public string RoutingKey => "payments.PaymentSucceeded";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("PaymentSucceeded received: {Message}", message);
+        logger.LogDebug("PaymentSucceeded received: {Message}", message);
 
         var payload = JsonSerializer.Deserialize<PaymentSucceededPayload>(message);
         if (payload is null) return;
