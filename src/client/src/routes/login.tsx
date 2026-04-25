@@ -5,10 +5,13 @@ import { authApi } from '../lib/api'
 import { useAuth } from '../lib/useAuth'
 import { ordersApi } from '../lib/ordersApi'
 
+type LoginSearch = {
+  verified?: boolean
+}
+
 export const Route = createFileRoute('/login')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    verified: search.verified === true,
-  }),
+  validateSearch: (search: Record<string, unknown>): LoginSearch =>
+    search.verified === true ? { verified: true } : {},
   component: LoginPage,
 })
 
