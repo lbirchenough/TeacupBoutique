@@ -130,11 +130,16 @@ jobs:
           timeout_seconds=1800
           poll_seconds=10
 
-          echo "Starting $job_name with image $image"
+          echo "Updating $job_name to image $image"
+          az containerapp job update \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$job_name" \
+            --image "$image"
+
+          echo "Starting $job_name"
           execution_name=$(az containerapp job start \
             --resource-group "$AZURE_RESOURCE_GROUP" \
             --name "$job_name" \
-            --image "$image" \
             --query name \
             -o tsv)
 
