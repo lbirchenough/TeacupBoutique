@@ -133,6 +133,11 @@ locals {
   migration_jobs = {
     auth = {
       image = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-auth:${var.container_image_tag}"
+      env = {
+        AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.container_apps.client_id
+        Messaging__Provider                 = "ServiceBus"
+        ServiceBus__FullyQualifiedNamespace = local.servicebus_fqdn
+      }
       secret_env = {
         ConnectionStrings__AuthDbPostgres = "connstr-authdb"
       }
@@ -143,6 +148,11 @@ locals {
 
     inventory = {
       image = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-inventory:${var.container_image_tag}"
+      env = {
+        AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.container_apps.client_id
+        Messaging__Provider                 = "ServiceBus"
+        ServiceBus__FullyQualifiedNamespace = local.servicebus_fqdn
+      }
       secret_env = {
         ConnectionStrings__InventoryDbPostgres = "connstr-inventorydb"
       }
@@ -153,6 +163,11 @@ locals {
 
     orders = {
       image = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-orders:${var.container_image_tag}"
+      env = {
+        AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.container_apps.client_id
+        Messaging__Provider                 = "ServiceBus"
+        ServiceBus__FullyQualifiedNamespace = local.servicebus_fqdn
+      }
       secret_env = {
         ConnectionStrings__OrdersDbPostgres = "connstr-ordersdb"
       }
@@ -163,6 +178,11 @@ locals {
 
     payments = {
       image = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-payments:${var.container_image_tag}"
+      env = {
+        AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.container_apps.client_id
+        Messaging__Provider                 = "ServiceBus"
+        ServiceBus__FullyQualifiedNamespace = local.servicebus_fqdn
+      }
       secret_env = {
         ConnectionStrings__PaymentsDbPostgres = "connstr-paymentsdb"
       }
@@ -453,9 +473,12 @@ resource "azurerm_container_app_job" "migrations" {
         value = "Production"
       }
 
-      env {
-        name  = "AZURE_CLIENT_ID"
-        value = azurerm_user_assigned_identity.container_apps.client_id
+      dynamic "env" {
+        for_each = each.value.env
+        content {
+          name  = env.key
+          value = env.value
+        }
       }
 
       dynamic "env" {
