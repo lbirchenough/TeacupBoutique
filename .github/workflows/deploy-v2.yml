@@ -1,6 +1,8 @@
 name: Deploy V2 to Azure
 
 on:
+  push:
+    branches: [feature/v2-azure-managed-services]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -103,7 +105,7 @@ jobs:
     name: Run database migrations
     runs-on: ubuntu-latest
     needs: [prepare, build-backend]
-    if: ${{ inputs.run_migrations }}
+    if: ${{ inputs.run_migrations || contains(github.event.head_commit.message, '[run migrations]') }}
     strategy:
       fail-fast: false
       matrix:
