@@ -105,14 +105,18 @@ jobs:
     name: Run database migrations
     runs-on: ubuntu-latest
     needs: [prepare, build-backend]
-    if: ${{ inputs.run_migrations || contains(github.event.head_commit.message, '[run migrations]') }}
     strategy:
       fail-fast: false
       matrix:
         service: [auth, inventory, orders, payments]
 
     steps:
+      - name: Skip migration job for ${{ matrix.service }}
+        if: ${{ !(inputs.run_migrations || contains(github.event.head_commit.message, '[run migrations]')) }}
+        run: echo "Migrations not requested for this deployment."
+
       - name: Azure login
+        if: ${{ inputs.run_migrations || contains(github.event.head_commit.message, '[run migrations]') }}
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -120,6 +124,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Run migration job for ${{ matrix.service }}
+        if: ${{ inputs.run_migrations || contains(github.event.head_commit.message, '[run migrations]') }}
         run: |
           # These jobs must be provisioned separately because GitHub-hosted
           # runners cannot reach the private PostgreSQL server directly.
@@ -179,7 +184,7 @@ jobs:
     name: Update Container Apps
     runs-on: ubuntu-latest
     needs: [prepare, build-backend, run-migrations]
-    if: ${{ always() && needs.build-backend.result == 'success' && (needs.run-migrations.result == 'success' || needs.run-migrations.result == 'skipped') }}
+    if: ${{ always() && needs.build-backend.result == 'success' && needs.run-migrations.result == 'success' }}
     strategy:
       fail-fast: false
       matrix:
