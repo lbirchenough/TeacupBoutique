@@ -1,0 +1,228 @@
+name: Deploy V2 to Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Container image tag to deploy. Defaults to the commit SHA; latest is also pushed for Terraform bootstrap/defaults."
+        required: false
+        type: string
+      run_migrations:
+        description: "Run pre-provisioned Container Apps migration jobs before updating services."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP || 'tcb-rg' }}
+  ACR_NAME: ${{ vars.ACR_NAME || 'teacupboutiqueacr' }}
+  CONTAINER_APP_PREFIX: ${{ vars.CONTAINER_APP_PREFIX || 'tcb' }}
+  STATIC_WEB_APP_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+
+jobs:
+  prepare:
+    name: Resolve deployment metadata
+    runs-on: ubuntu-latest
+    outputs:
+      acr_login_server: ${{ steps.acr.outputs.login_server }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve image tag
+        id: meta
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve ACR login server
+        id: acr
+        run: |
+          login_server=$(az acr show --name "$ACR_NAME" --query loginServer -o tsv)
+          echo "login_server=$login_server" >> "$GITHUB_OUTPUT"
+
+  build-backend:
+    name: Build and push backend images
+    runs-on: ubuntu-latest
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            dockerfile: src/gateway/Dockerfile
+          - service: auth
+            dockerfile: src/services/auth/Dockerfile
+          - service: inventory
+            dockerfile: src/services/inventory/Dockerfile
+          - service: orders
+            dockerfile: src/services/orders/Dockerfile
+          - service: payments
+            dockerfile: src/services/payments/Dockerfile
+          - service: notifications
+            dockerfile: src/services/notifications/Dockerfile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to ACR
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ needs.prepare.outputs.acr_login_server }}/teacupboutique-${{ matrix.service }}:${{ needs.prepare.outputs.image_tag }}
+            ${{ needs.prepare.outputs.acr_login_server }}/teacupboutique-${{ matrix.service }}:latest
+
+  run-migrations:
+    name: Run database migrations
+    runs-on: ubuntu-latest
+    needs: [prepare, build-backend]
+    if: ${{ inputs.run_migrations }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth, inventory, orders, payments]
+
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run migration job for ${{ matrix.service }}
+        run: |
+          # These jobs must be provisioned separately because GitHub-hosted
+          # runners cannot reach the private PostgreSQL server directly.
+          set -euo pipefail
+
+          job_name="${CONTAINER_APP_PREFIX}-${{ matrix.service }}-migrations"
+          image="${{ needs.prepare.outputs.acr_login_server }}/teacupboutique-${{ matrix.service }}:${{ needs.prepare.outputs.image_tag }}"
+          timeout_seconds=1800
+          poll_seconds=10
+
+          echo "Starting $job_name with image $image"
+          execution_name=$(az containerapp job start \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "$job_name" \
+            --image "$image" \
+            --query name \
+            -o tsv)
+
+          echo "Migration execution started: $execution_name"
+          started_at=$SECONDS
+
+          while true; do
+            status=$(az containerapp job execution show \
+              --resource-group "$AZURE_RESOURCE_GROUP" \
+              --name "$job_name" \
+              --job-execution-name "$execution_name" \
+              --query properties.status \
+              -o tsv)
+
+            echo "$job_name status: $status"
+
+            case "$status" in
+              Succeeded)
+                echo "$job_name completed successfully"
+                exit 0
+                ;;
+              Failed|Stopped|Degraded)
+                echo "$job_name failed with status: $status"
+                exit 1
+                ;;
+            esac
+
+            if [ "$((SECONDS - started_at))" -ge "$timeout_seconds" ]; then
+              echo "$job_name did not complete within ${timeout_seconds}s"
+              exit 1
+            fi
+
+            sleep "$poll_seconds"
+          done
+
+  deploy-backend:
+    name: Update Container Apps
+    runs-on: ubuntu-latest
+    needs: [prepare, build-backend, run-migrations]
+    if: ${{ always() && needs.build-backend.result == 'success' && (needs.run-migrations.result == 'success' || needs.run-migrations.result == 'skipped') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gateway, auth, inventory, orders, payments, notifications]
+
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Update ${{ matrix.service }}
+        run: |
+          az containerapp update \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
+            --name "${CONTAINER_APP_PREFIX}-${{ matrix.service }}" \
+            --image "${{ needs.prepare.outputs.acr_login_server }}/teacupboutique-${{ matrix.service }}:${{ needs.prepare.outputs.image_tag }}"
+
+  deploy-frontend:
+    name: Build and deploy Static Web App
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/client/package-lock.json
+
+      - name: Validate frontend deployment config
+        run: |
+          test -n "$STATIC_WEB_APP_TOKEN" || (echo "Missing AZURE_STATIC_WEB_APPS_API_TOKEN secret" && exit 1)
+
+      - name: Build frontend
+        working-directory: src/client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy frontend
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ env.STATIC_WEB_APP_TOKEN }}
+          action: upload
+          app_location: src/client/dist
+          skip_app_build: true
