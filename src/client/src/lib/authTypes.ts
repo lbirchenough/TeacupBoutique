@@ -1,4 +1,5 @@
 export interface AuthContextValue {
+  authStatus: 'checking' | 'anonymous' | 'authenticated'
   isLoggedIn: boolean
   isAdmin: boolean
   email: string | null

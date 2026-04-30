@@ -84,17 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value: AuthContextValue = {
+    authStatus: !initialised ? 'checking' : accessToken ? 'authenticated' : 'anonymous',
     isLoggedIn: !!accessToken,
     isAdmin: accessToken ? parseIsAdmin(accessToken) : false,
     email: accessToken ? parseEmail(accessToken) : null,
     accessToken,
     setToken,
     updateToken,
-  }
-
-  if (!initialised) {
-    // Optionally render a loading state while we check for a refresh token
-    return null
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

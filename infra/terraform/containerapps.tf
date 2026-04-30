@@ -15,7 +15,7 @@ locals {
   service_container_apps = {
     auth = {
       image        = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-auth:${var.container_image_tag}"
-      min_replicas = 0
+      min_replicas = 1
       ingress      = true
       env = {
         ASPNETCORE_ENVIRONMENT              = "Production"
@@ -42,7 +42,7 @@ locals {
 
     inventory = {
       image        = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-inventory:${var.container_image_tag}"
-      min_replicas = 1
+      min_replicas = 0
       ingress      = true
       env = {
         ASPNETCORE_ENVIRONMENT              = "Production"
@@ -63,7 +63,7 @@ locals {
 
     orders = {
       image        = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-orders:${var.container_image_tag}"
-      min_replicas = 1
+      min_replicas = 0
       ingress      = true
       env = {
         ASPNETCORE_ENVIRONMENT              = "Production"
@@ -84,7 +84,7 @@ locals {
 
     payments = {
       image        = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-payments:${var.container_image_tag}"
-      min_replicas = 1
+      min_replicas = 0
       ingress      = true
       env = {
         ASPNETCORE_ENVIRONMENT              = "Production"
@@ -109,7 +109,7 @@ locals {
 
     notifications = {
       image        = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-notifications:${var.container_image_tag}"
-      min_replicas = 1
+      min_replicas = 0
       ingress      = false
       env = {
         DOTNET_ENVIRONMENT                  = "Production"
@@ -127,6 +127,18 @@ locals {
       secrets = {
         mailgun-api-key = local.external_secret_ids.mailgun_api_key
       }
+    }
+  }
+
+  # Per-service Service Bus subscription scale rules, derived from the existing
+  # servicebus_subscriptions map. Subscription names are formatted
+  # "<consumer-service>.<event-name>", so we group by the prefix.
+  scale_rules_by_service = {
+    for service_name in keys(local.service_container_apps) :
+    service_name => {
+      for sub_name, topic_name in local.servicebus_subscriptions :
+      sub_name => topic_name
+      if startswith(sub_name, "${service_name}.")
     }
   }
 
@@ -302,6 +314,35 @@ resource "azurerm_container_app" "services" {
         }
       }
     }
+
+    dynamic "custom_scale_rule" {
+      for_each = local.scale_rules_by_service[each.key]
+      content {
+        name             = "sb-${replace(custom_scale_rule.key, ".", "-")}"
+        custom_rule_type = "azure-servicebus"
+        metadata = {
+          namespace        = azurerm_servicebus_namespace.teacupboutique.name
+          topicName        = custom_scale_rule.value
+          subscriptionName = custom_scale_rule.key
+          messageCount     = "1"
+        }
+        identity_id = azurerm_user_assigned_identity.container_apps.id
+      }
+    }
+
+    dynamic "custom_scale_rule" {
+      for_each = each.key == "payments" ? [1] : []
+      content {
+        name             = "sb-stripe-webhook"
+        custom_rule_type = "azure-servicebus"
+        metadata = {
+          namespace    = azurerm_servicebus_namespace.teacupboutique.name
+          queueName    = local.servicebus_queue_name
+          messageCount = "1"
+        }
+        identity_id = azurerm_user_assigned_identity.container_apps.id
+      }
+    }
   }
 
   dynamic "ingress" {
@@ -323,7 +364,18 @@ resource "azurerm_container_app" "services" {
     azurerm_role_assignment.container_apps_kv_secrets,
     azurerm_role_assignment.container_apps_servicebus_sender,
     azurerm_role_assignment.container_apps_servicebus_receiver,
+    azurerm_servicebus_subscription.subs,
+    azurerm_servicebus_queue.stripe_webhook,
   ]
+
+  # Image is managed by the GitHub Actions deploy pipeline (az containerapp
+  # update), which rolls each app to a SHA-pinned tag after every build.
+  # Terraform only seeds :latest on first provision.
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+    ]
+  }
 }
 
 resource "azurerm_container_app" "gateway" {
@@ -350,7 +402,7 @@ resource "azurerm_container_app" "gateway" {
   }
 
   template {
-    min_replicas = 0
+    min_replicas = 1
     max_replicas = 1
 
     container {
@@ -422,6 +474,14 @@ resource "azurerm_container_app" "gateway" {
     azurerm_role_assignment.container_apps_kv_secrets,
     azurerm_container_app.services,
   ]
+
+  # Image is managed by the GitHub Actions deploy pipeline (az containerapp
+  # update). Terraform only seeds :latest on first provision.
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+    ]
+  }
 }
 
 resource "azurerm_container_app_job" "migrations" {
@@ -495,4 +555,12 @@ resource "azurerm_container_app_job" "migrations" {
     azurerm_role_assignment.container_apps_acr_pull,
     azurerm_role_assignment.container_apps_kv_secrets,
   ]
+
+  # Image is managed by the GitHub Actions deploy pipeline (az containerapp
+  # job update). Terraform only seeds :latest on first provision.
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+    ]
+  }
 }

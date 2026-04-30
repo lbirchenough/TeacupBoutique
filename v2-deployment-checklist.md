@@ -30,6 +30,7 @@
 - [ ] Verify frontend production config uses the v2 gateway URL through `VITE_API_URL`
 - [ ] Verify Turnstile allowed hostnames include the v2 frontend domain
 - [ ] Verify Stripe webhook endpoint points to the v2 gateway URL: `/webhooks/stripe`
+- [ ] Persist ASP.NET Core Data Protection keys for `auth` so email verification, password reset, and email-change tokens survive auth restarts/redeploys
 
 ## Backend CI/CD
 
@@ -73,6 +74,7 @@
 
 - [ ] Confirm Container App logs are flowing to Log Analytics
 - [ ] Add Application Insights/OpenTelemetry integration or document as post-launch hardening
+- [ ] Experiment with Container Apps scale-to-zero settings: keep `gateway` warm, decide which internal HTTP services can idle, and add Service Bus scale rules before scaling background consumers to zero
 - [ ] Add basic health checks or operational smoke-test commands
 - [ ] Document rollback process for Container App revisions/images
 - [ ] Document how to inspect failed Service Bus messages and dead-letter queues
