@@ -23,6 +23,7 @@ locals {
         AdminSeed__Email                    = var.admin_seed_email
         AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.container_apps.client_id
         ClientUrl                           = local.frontend_url
+        DataProtection__BlobUri             = "${azurerm_storage_account.dataprotection.primary_blob_endpoint}${azurerm_storage_container.dataprotection.name}/${local.auth_data_protection_blob_name}"
         Messaging__Provider                 = "ServiceBus"
         ServiceBus__FullyQualifiedNamespace = local.servicebus_fqdn
       }
@@ -292,6 +293,13 @@ resource "azurerm_container_app" "services" {
     min_replicas = each.value.min_replicas
     max_replicas = 1
 
+    # KEDA polls Service Bus subscriptions/queues at this interval to decide
+    # whether to wake a scaled-to-zero replica. Microsoft's default is 30s;
+    # 5s trades a tiny amount of platform overhead (polling is unbilled) for
+    # ~6x faster cold-start wake-up on incoming messages. No effect on apps
+    # at min_replicas >= 1 or on apps with HTTP-only scalers.
+    polling_interval_in_seconds = 5
+
     container {
       name   = each.key
       image  = each.value.image
@@ -361,6 +369,7 @@ resource "azurerm_container_app" "services" {
 
   depends_on = [
     azurerm_role_assignment.container_apps_acr_pull,
+    azurerm_role_assignment.container_apps_data_protection_blob,
     azurerm_role_assignment.container_apps_kv_secrets,
     azurerm_role_assignment.container_apps_servicebus_sender,
     azurerm_role_assignment.container_apps_servicebus_receiver,

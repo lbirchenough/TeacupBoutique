@@ -4,6 +4,13 @@ resource "azurerm_static_web_app" "frontend" {
   location            = var.static_web_app_location
   sku_tier            = "Free"
   sku_size            = "Free"
+
+  lifecycle {
+    ignore_changes = [
+      repository_branch,
+      repository_url,
+    ]
+  }
 }
 
 locals {

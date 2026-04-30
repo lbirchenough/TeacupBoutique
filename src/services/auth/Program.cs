@@ -1,9 +1,11 @@
 using System.Text;
+using Azure.Identity;
 using auth.Data;
 using auth.Models;
 using auth.Services;
 using Messaging.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,6 +21,16 @@ builder.Services.AddHttpClient<TurnstileService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+var dataProtectionBlobUri = builder.Configuration["DataProtection:BlobUri"];
+var dataProtection = builder.Services
+    .AddDataProtection()
+    .SetApplicationName("TeacupBoutique.Auth");
+
+if (!string.IsNullOrWhiteSpace(dataProtectionBlobUri))
+{
+    dataProtection.PersistKeysToAzureBlobStorage(new Uri(dataProtectionBlobUri), new DefaultAzureCredential());
+}
 
 // 1) EF Core + PostgreSQL
 builder.Services.AddDbContext<AuthDbContext>(opt =>
