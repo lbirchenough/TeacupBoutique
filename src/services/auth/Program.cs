@@ -87,6 +87,9 @@ builder.Services.AddAuthorization();
 //builder.Services.AddOpenApi();
 
 var app = builder.Build();
+app.Logger.LogInformation(
+    "Auth Data Protection key ring persistence: {Persistence}",
+    string.IsNullOrWhiteSpace(dataProtectionBlobUri) ? "local-default" : "azure-blob");
 
 // Configure the HTTP request pipeline.
 // if (app.Environment.IsDevelopment())
