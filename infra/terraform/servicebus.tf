@@ -1,74 +1,69 @@
 locals {
   servicebus_queue_name = "payments.process-webhook"
 
-  # Map of subscription name => physical Service Bus event topic.
-  # Subscription names mirror the RabbitMQ queue names, and topic names mirror the
-  # lowercased routing keys passed to IMessagePublisher.PublishAsync(...).
-  #
-  # Most events have one subscription. Fanout is just multiple subscriptions on
-  # the same topic, using Service Bus's default "$Default" rule (SqlFilter 1=1).
-  servicebus_subscriptions = {
-    "inventory.order-placed"                  = "orders.orderplaced"
-    "inventory.order-cancelled"               = "orders.ordercancelled"
-    "inventory.payment-succeeded"             = "payments.paymentsucceeded"
-    "orders.stock-reserved"                   = "inventory.stockreserved"
-    "orders.stock-unavailable"                = "inventory.stockunavailable"
-    "orders.payment-succeeded"                = "payments.paymentsucceeded"
-    "orders.payment-failed"                   = "payments.paymentfailed"
-    "orders.booking-cancelled"                = "inventory.bookingcancelled"
-    "orders.booking-completed"                = "inventory.bookingcompleted"
-    "orders.refund-succeeded"                 = "payments.refundsucceeded"
-    "orders.refund-failed"                    = "payments.refundfailed"
-    "orders.return-assessed-missing"          = "inventory.returnassessedwithmissingitems"
-    "payments.ready-for-payment"              = "orders.readyforpayment"
-    "payments.refund-requested"               = "orders.refundrequested"
-    "notifications.order-confirmed"           = "orders.orderconfirmed"
-    "notifications.payment-failed"            = "orders.paymentfailed"
-    "notifications.order-cancelled"           = "orders.ordercancelled"
-    "notifications.order-completed"           = "orders.ordercompleted"
-    "notifications.email-verification"        = "auth.emailverificationrequested"
-    "notifications.password-reset"            = "auth.passwordresetrequested"
-    "notifications.email-changed"             = "auth.emailchanged"
-    "notifications.email-change-verification" = "auth.emailchangeverificationrequested"
-    "notifications.password-changed"          = "auth.passwordchanged"
-  }
-
-  servicebus_topics = toset(values(local.servicebus_subscriptions))
+  # Per-event-consumer queues. The name format is "<consumer-service>.<event-name>"
+  # (mirrors the previous subscription names). Producers publish directly to these
+  # queues; the EventTargets map in each producer's appsettings.json drives the
+  # logical-event -> queue(s) routing, including publisher-side fan-out for events
+  # that previously had multiple topic subscribers (orders.OrderCancelled and
+  # payments.PaymentSucceeded).
+  servicebus_queues = toset([
+    "inventory.order-placed",
+    "inventory.order-cancelled",
+    "inventory.payment-succeeded",
+    "orders.stock-reserved",
+    "orders.stock-unavailable",
+    "orders.payment-succeeded",
+    "orders.payment-failed",
+    "orders.booking-cancelled",
+    "orders.booking-completed",
+    "orders.refund-succeeded",
+    "orders.refund-failed",
+    "orders.return-assessed-missing",
+    "payments.ready-for-payment",
+    "payments.refund-requested",
+    "notifications.order-confirmed",
+    "notifications.payment-failed",
+    "notifications.order-cancelled",
+    "notifications.order-completed",
+    "notifications.email-verification",
+    "notifications.password-reset",
+    "notifications.email-changed",
+    "notifications.email-change-verification",
+    "notifications.password-changed",
+  ])
 }
 
 resource "azurerm_servicebus_namespace" "teacupboutique" {
   name                = "${var.project}-servicebus"
   resource_group_name = azurerm_resource_group.teacupboutique.name
   location            = azurerm_resource_group.teacupboutique.location
-  sku                 = "Standard"
+  sku                 = "Basic"
 
-  # Standard SKU has a public endpoint, auth-gated (SAS or managed identity).
-  # Premium would unlock private endpoints + VNet-only reach (~$650/mo floor).
-  # Lock down later with azurerm_servicebus_namespace_network_rule_set if desired.
+  # Basic SKU: queues only (no topics/subscriptions). ~$0.05 per million ops,
+  # no monthly base. Sufficient for this site since publisher-side fan-out
+  # replaces the few events that previously had multiple topic subscribers.
 }
 
-resource "azurerm_servicebus_topic" "events" {
-  for_each = local.servicebus_topics
-
-  name         = each.key
-  namespace_id = azurerm_servicebus_namespace.teacupboutique.id
-}
-
-resource "azurerm_servicebus_subscription" "subs" {
-  for_each = local.servicebus_subscriptions
+resource "azurerm_servicebus_queue" "queues" {
+  for_each = local.servicebus_queues
 
   name               = each.key
-  topic_id           = azurerm_servicebus_topic.events[each.value].id
-  max_delivery_count = 10
-  lock_duration      = "PT1M"
-}
-
-# Stripe webhook buffer - point-to-point queue, separate from the pub/sub topics.
-resource "azurerm_servicebus_queue" "stripe_webhook" {
-  name               = local.servicebus_queue_name
   namespace_id       = azurerm_servicebus_namespace.teacupboutique.id
   max_delivery_count = 10
   lock_duration      = "PT1M"
+  # Basic SKU caps default_message_ttl at 14 days. Standard's default is
+  # effectively infinite, which Azure rejects on a Standard->Basic downgrade.
+  default_message_ttl = "P14D"
+}
+
+# Stripe webhook buffer - point-to-point queue, distinct from the per-event queues.
+resource "azurerm_servicebus_queue" "stripe_webhook" {
+  name                = local.servicebus_queue_name
+  namespace_id        = azurerm_servicebus_namespace.teacupboutique.id
+  max_delivery_count  = 10
+  lock_duration       = "PT1M"
+  default_message_ttl = "P14D"
 }
 
 # Namespace-level SAS auth rule - listen + send, no manage.

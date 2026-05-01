@@ -1,6 +1,5 @@
 using Azure.Messaging.ServiceBus;
 using Messaging.Interfaces;
-using Messaging.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -33,8 +32,7 @@ public class ServiceBusConsumerHost : BackgroundService
 
         foreach (var consumer in _consumers)
         {
-            var physicalTopicName = ServiceBusTopicNameResolver.ToPhysicalTopicName(consumer.RoutingKey);
-            var processor = _client.CreateProcessor(physicalTopicName, consumer.QueueName, new ServiceBusProcessorOptions
+            var processor = _client.CreateProcessor(consumer.QueueName, new ServiceBusProcessorOptions
             {
                 AutoCompleteMessages = false,
                 MaxConcurrentCalls = 1
@@ -50,7 +48,7 @@ public class ServiceBusConsumerHost : BackgroundService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error handling message on {RoutingKey}", captured.RoutingKey);
+                    _logger.LogError(ex, "Error handling message on queue {QueueName}", captured.QueueName);
                     await args.AbandonMessageAsync(args.Message, cancellationToken: args.CancellationToken);
                 }
             };
@@ -63,8 +61,7 @@ public class ServiceBusConsumerHost : BackgroundService
             await processor.StartProcessingAsync(stoppingToken);
             _processors.Add(processor);
             _logger.LogInformation(
-                "Listening on topic '{PhysicalTopic}' subscription '{Subscription}' (routing key: {RoutingKey})",
-                physicalTopicName,
+                "Listening on Service Bus queue '{QueueName}' (logical event: {RoutingKey})",
                 consumer.QueueName,
                 consumer.RoutingKey);
         }

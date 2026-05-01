@@ -15,7 +15,7 @@ locals {
   service_container_apps = {
     auth = {
       image        = "${azurerm_container_registry.teacupboutique.login_server}/teacupboutique-auth:${var.container_image_tag}"
-      min_replicas = 1
+      min_replicas = 0
       ingress      = true
       env = {
         ASPNETCORE_ENVIRONMENT              = "Production"
@@ -131,16 +131,16 @@ locals {
     }
   }
 
-  # Per-service Service Bus subscription scale rules, derived from the existing
-  # servicebus_subscriptions map. Subscription names are formatted
-  # "<consumer-service>.<event-name>", so we group by the prefix.
+  # KEDA queue scale rules, only used by services without HTTP ingress
+  # (notifications). Services with HTTP ingress wake via gateway /api/wake instead.
+  # Queue names are formatted "<consumer-service>.<event-name>" so we group by prefix.
   scale_rules_by_service = {
     for service_name in keys(local.service_container_apps) :
-    service_name => {
-      for sub_name, topic_name in local.servicebus_subscriptions :
-      sub_name => topic_name
-      if startswith(sub_name, "${service_name}.")
-    }
+    service_name => [
+      for queue_name in local.servicebus_queues :
+      queue_name
+      if startswith(queue_name, "${service_name}.")
+    ]
   }
 
   migration_jobs = {
@@ -293,13 +293,6 @@ resource "azurerm_container_app" "services" {
     min_replicas = each.value.min_replicas
     max_replicas = 1
 
-    # KEDA polls Service Bus subscriptions/queues at this interval to decide
-    # whether to wake a scaled-to-zero replica. Microsoft's default is 30s;
-    # 5s trades a tiny amount of platform overhead (polling is unbilled) for
-    # ~6x faster cold-start wake-up on incoming messages. No effect on apps
-    # at min_replicas >= 1 or on apps with HTTP-only scalers.
-    polling_interval_in_seconds = 5
-
     container {
       name   = each.key
       image  = each.value.image
@@ -323,16 +316,19 @@ resource "azurerm_container_app" "services" {
       }
     }
 
+    # Queue-based KEDA wake-up. Only applied to notifications, which has no
+    # HTTP ingress and so cannot be woken via gateway /api/wake. Other backends
+    # (auth, inventory, orders, payments) wake via HTTP from gateway and rely
+    # on the warm-up window to drain their queues during a user session.
     dynamic "custom_scale_rule" {
-      for_each = local.scale_rules_by_service[each.key]
+      for_each = each.key == "notifications" ? toset(local.scale_rules_by_service[each.key]) : toset([])
       content {
-        name             = "sb-${replace(custom_scale_rule.key, ".", "-")}"
+        name             = "sb-${replace(custom_scale_rule.value, ".", "-")}"
         custom_rule_type = "azure-servicebus"
         metadata = {
-          namespace        = azurerm_servicebus_namespace.teacupboutique.name
-          topicName        = custom_scale_rule.value
-          subscriptionName = custom_scale_rule.key
-          messageCount     = "1"
+          namespace    = azurerm_servicebus_namespace.teacupboutique.name
+          queueName    = custom_scale_rule.value
+          messageCount = "1"
         }
         identity_id = azurerm_user_assigned_identity.container_apps.id
       }
@@ -373,7 +369,7 @@ resource "azurerm_container_app" "services" {
     azurerm_role_assignment.container_apps_kv_secrets,
     azurerm_role_assignment.container_apps_servicebus_sender,
     azurerm_role_assignment.container_apps_servicebus_receiver,
-    azurerm_servicebus_subscription.subs,
+    azurerm_servicebus_queue.queues,
     azurerm_servicebus_queue.stripe_webhook,
   ]
 

@@ -104,6 +104,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Cheap wake-up endpoint for gateway /api/wake. Returns immediately; the act of
+// receiving the request is what triggers Container Apps to scale 0 -> 1.
+app.MapGet("/health", () => Results.Ok());
+
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
