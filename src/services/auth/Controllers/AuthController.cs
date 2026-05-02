@@ -256,16 +256,22 @@ namespace auth.Controllers
             return NoContent();
         }
 
-        [Authorize]
         [HttpPost("logout")]
         public async Task<ActionResult> Logout()
         {
-            await userManager.Users
-                .Where(x => x.Id == User.GetMemberId())
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(x => x.RefreshToken, _ => null)
-                    .SetProperty(x => x.RefreshTokenExpiry, _ => null)
-                    );
+            // Anonymous so it works when the access token has expired or auth is
+            // cold-starting. We identify the session by the HttpOnly refresh-token
+            // cookie, which a remote attacker cannot supply.
+            if (Request.Cookies.TryGetValue("RefreshToken", out var refreshToken)
+                && !string.IsNullOrEmpty(refreshToken))
+            {
+                await userManager.Users
+                    .Where(x => x.RefreshToken == refreshToken)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(x => x.RefreshToken, _ => null)
+                        .SetProperty(x => x.RefreshTokenExpiry, _ => null)
+                        );
+            }
 
             Response.Cookies.Delete("RefreshToken");
 

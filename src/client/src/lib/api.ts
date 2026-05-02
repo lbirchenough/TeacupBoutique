@@ -66,21 +66,18 @@ export const authApi = {
   },
 
   logout: async () => {
-    const token = authStore.getAccessToken()
-
-    const response = await fetch(`${API_BASE_URL}/api/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : undefined,
-    })
-
-    if (!response.ok) {
-      const message = await response.text()
-      throw new Error(message || 'An error occurred while logging out')
+    // Logout is fire-and-forget UX. The refresh-token cookie identifies the
+    // session server-side, so we don't need to send a bearer token. We always
+    // clear local state regardless of the server response — even if the call
+    // fails (auth cold-starting, network blip), the user clicked Logout and
+    // expects to be logged out client-side immediately.
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch {
+      // swallow — local state still gets cleared below
     }
 
     authStore.clearAccessToken()
