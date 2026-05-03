@@ -16,8 +16,6 @@ namespace auth.Controllers
     [ApiController]
     public class AuthController(TokenService tokenService, UserManager<ApplicationUser> userManager, IMessagePublisher publisher, IConfiguration configuration, TurnstileService turnstileService) : ControllerBase
     {
-        private readonly string clientUrl = configuration["ClientUrl"] ?? "https://localhost:5173";
-
         [HttpPost("register")]
         public async Task<ActionResult<RegisterResponse>> Register(RegisterRequest req)
         {
@@ -36,9 +34,8 @@ namespace auth.Controllers
                 return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
 
             var confirmToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
-            var link = $"{clientUrl}/verify-email?token={Uri.EscapeDataString(confirmToken)}&email={Uri.EscapeDataString(user.Email!)}";
             await publisher.PublishAsync("auth.EmailVerificationRequested",
-                JsonSerializer.Serialize(new EmailVerificationRequestedEvent(user.Id, user.Email!, link)));
+                JsonSerializer.Serialize(new EmailVerificationRequestedEvent(user.Id, user.Email!, confirmToken)));
 
             return Ok(new RegisterResponse(RequiresVerification: true));
         }
@@ -163,9 +160,8 @@ namespace auth.Controllers
             if (user is not null && user.EmailConfirmed)
             {
                 var token = await userManager.GeneratePasswordResetTokenAsync(user);
-                var link = $"{clientUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(req.Email)}";
                 await publisher.PublishAsync("auth.PasswordResetRequested",
-                    JsonSerializer.Serialize(new PasswordResetRequestedEvent(req.Email, link)));
+                    JsonSerializer.Serialize(new PasswordResetRequestedEvent(req.Email, token)));
             }
             return Ok(); // always 200 — don't reveal whether email exists
         }
@@ -219,9 +215,8 @@ namespace auth.Controllers
                 user.PhoneNumber = request.PhoneNumber;
                 await userManager.UpdateAsync(user);
 
-                var link = $"{clientUrl}/verify-email-change?token={Uri.EscapeDataString(changeToken)}&newEmail={Uri.EscapeDataString(request.Email)}";
                 await publisher.PublishAsync("auth.EmailChangeVerificationRequested",
-                    JsonSerializer.Serialize(new EmailChangeVerificationRequestedEvent(user.Id, request.Email, link)));
+                    JsonSerializer.Serialize(new EmailChangeVerificationRequestedEvent(user.Id, request.Email, changeToken)));
 
                 return Ok(new { requiresEmailVerification = true });
             }

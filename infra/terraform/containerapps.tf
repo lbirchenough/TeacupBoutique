@@ -22,7 +22,6 @@ locals {
         ASPNETCORE_HTTP_PORTS               = "8080"
         AdminSeed__Email                    = var.admin_seed_email
         AZURE_CLIENT_ID                     = azurerm_user_assigned_identity.container_apps.client_id
-        ClientUrl                           = local.frontend_url
         DataProtection__BlobUri             = "${azurerm_storage_account.dataprotection.primary_blob_endpoint}${azurerm_storage_container.dataprotection.name}/${local.auth_data_protection_blob_name}"
         Messaging__Provider                 = "ServiceBus"
         ServiceBus__FullyQualifiedNamespace = local.servicebus_fqdn

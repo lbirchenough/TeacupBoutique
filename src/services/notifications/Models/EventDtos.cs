@@ -29,9 +29,9 @@ public record OrderCancelledEvent(
 
 public record EmailChangedEvent(string UserId, string FullName, string OldEmail, string NewEmail);
 
-public record EmailVerificationRequestedEvent(string UserId, string Email, string VerificationLink);
-public record EmailChangeVerificationRequestedEvent(string UserId, string NewEmail, string VerificationLink);
-public record PasswordResetRequestedEvent(string Email, string ResetLink);
+public record EmailVerificationRequestedEvent(string UserId, string Email, string Token);
+public record EmailChangeVerificationRequestedEvent(string UserId, string NewEmail, string Token);
+public record PasswordResetRequestedEvent(string Email, string Token);
 public record PasswordChangedEvent(string Email);
 
 public record OrderCompletedEvent(
