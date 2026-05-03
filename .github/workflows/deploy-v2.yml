@@ -2,7 +2,7 @@ name: Deploy V2 to Azure
 
 on:
   push:
-    branches: [feature/v2-azure-managed-services]
+    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
