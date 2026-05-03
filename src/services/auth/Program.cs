@@ -1,10 +1,11 @@
 using System.Text;
+using Azure.Identity;
 using auth.Data;
 using auth.Models;
 using auth.Services;
-using Messaging.Interfaces;
-using Messaging.Services;
+using Messaging.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -13,13 +14,23 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddHttpClient<TurnstileService>();
 
 
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+var dataProtectionBlobUri = builder.Configuration["DataProtection:BlobUri"];
+var dataProtection = builder.Services
+    .AddDataProtection()
+    .SetApplicationName("TeacupBoutique.Auth");
+
+if (!string.IsNullOrWhiteSpace(dataProtectionBlobUri))
+{
+    dataProtection.PersistKeysToAzureBlobStorage(new Uri(dataProtectionBlobUri), new DefaultAzureCredential());
+}
 
 // 1) EF Core + PostgreSQL
 builder.Services.AddDbContext<AuthDbContext>(opt =>
@@ -76,6 +87,9 @@ builder.Services.AddAuthorization();
 //builder.Services.AddOpenApi();
 
 var app = builder.Build();
+app.Logger.LogInformation(
+    "Auth Data Protection key ring persistence: {Persistence}",
+    string.IsNullOrWhiteSpace(dataProtectionBlobUri) ? "local-default" : "azure-blob");
 
 // Configure the HTTP request pipeline.
 // if (app.Environment.IsDevelopment())
@@ -89,6 +103,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Cheap wake-up endpoint for gateway /api/wake. Returns immediately; the act of
+// receiving the request is what triggers Container Apps to scale 0 -> 1.
+app.MapGet("/health", () => Results.Ok());
 
 if (app.Environment.IsDevelopment())
 {

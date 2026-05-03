@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
-public class RefundFailedConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class RefundFailedConsumer(IServiceScopeFactory scopeFactory, ILogger<RefundFailedConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "orders.refund-failed";
-    public override string RoutingKey => "payments.RefundFailed";
+    public string QueueName => "orders.refund-failed";
+    public string RoutingKey => "payments.RefundFailed";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("RefundFailed received: {Message}", message);
+        logger.LogDebug("RefundFailed received: {Message}", message);
 
         using var scope = scopeFactory.CreateScope();
         var orderEventService = scope.ServiceProvider.GetRequiredService<IOrderEvent>();

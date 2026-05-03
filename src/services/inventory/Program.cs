@@ -1,8 +1,7 @@
 using inventory.Data;
 using inventory.Services;
 using inventory.Workers;
-using Messaging.Interfaces;
-using Messaging.Services;
+using Messaging.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -10,10 +9,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddHostedService<OrderPlacedConsumer>();
-builder.Services.AddHostedService<OrderCancelledConsumer>();
-builder.Services.AddHostedService<PaymentSucceededConsumer>();
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
+builder.Services.AddConsumer<OrderPlacedConsumer>();
+builder.Services.AddConsumer<OrderCancelledConsumer>();
+builder.Services.AddConsumer<PaymentSucceededConsumer>();
+builder.Services.AddMessaging(builder.Configuration);
 builder.Services.AddScoped<InventoryEventService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
@@ -50,6 +49,10 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Cheap wake-up endpoint for gateway /api/wake. Returns immediately; the act of
+// receiving the request is what triggers Container Apps to scale 0 -> 1.
+app.MapGet("/health", () => Results.Ok());
 
 if (app.Environment.IsDevelopment())
 {

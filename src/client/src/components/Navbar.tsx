@@ -7,7 +7,7 @@ import { useCart } from '../lib/useCart'
 
 export function Navbar() {
   const navigate = useNavigate()
-  const { isLoggedIn, isAdmin, email, setToken } = useAuth()
+  const { authStatus, isLoggedIn, isAdmin, email, setToken } = useAuth()
   const { count } = useCart()
   const queryClient = useQueryClient()
   const [profileOpen, setProfileOpen] = useState(false)
@@ -66,7 +66,7 @@ export function Navbar() {
             >
               Book Now
             </Link>
-            {isAdmin && (
+            {authStatus !== 'checking' && isAdmin && (
               <Link
                 to="/bookings"
                 className="text-sm text-brown-mid hover:text-brown transition-colors"
@@ -74,7 +74,7 @@ export function Navbar() {
                 Bookings
               </Link>
             )}
-            {isAdmin && (
+            {authStatus !== 'checking' && isAdmin && (
               <Link
                 to="/maintenance"
                 className="text-sm text-brown-mid hover:text-brown transition-colors"
@@ -96,7 +96,7 @@ export function Navbar() {
             </Link>
 
             {/* Auth */}
-            {!isLoggedIn && (
+            {authStatus === 'anonymous' && !isLoggedIn && (
               <>
                 <Link
                   to="/login"
@@ -115,7 +115,7 @@ export function Navbar() {
             )}
 
             {/* Profile dropdown */}
-            {isLoggedIn && (
+            {authStatus === 'authenticated' && isLoggedIn && (
               <div className="relative" ref={dropdownRef}>
                 <button
                   type="button"

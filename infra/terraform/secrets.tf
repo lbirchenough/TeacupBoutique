@@ -17,6 +17,16 @@ resource "random_password" "jwt_signing_key" {
   special = false
 }
 
+resource "random_password" "admin_seed_password" {
+  length           = 32
+  special          = true
+  override_special = "!#%&*+-._~"
+  min_lower        = 2
+  min_upper        = 2
+  min_numeric      = 2
+  min_special      = 2
+}
+
 resource "azurerm_key_vault_secret" "postgres_admin_password" {
   name         = "postgres-admin-password"
   value        = random_password.postgres_admin.result
@@ -28,6 +38,14 @@ resource "azurerm_key_vault_secret" "postgres_admin_password" {
 resource "azurerm_key_vault_secret" "jwt_signing_key" {
   name         = "jwt-signing-key"
   value        = random_password.jwt_signing_key.result
+  key_vault_id = azurerm_key_vault.teacupboutique.id
+
+  depends_on = [azurerm_role_assignment.kv_admin_self]
+}
+
+resource "azurerm_key_vault_secret" "admin_seed_password" {
+  name         = "admin-seed-password"
+  value        = random_password.admin_seed_password.result
   key_vault_id = azurerm_key_vault.teacupboutique.id
 
   depends_on = [azurerm_role_assignment.kv_admin_self]

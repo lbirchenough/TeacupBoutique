@@ -1,10 +1,12 @@
 import { createRootRoute, Link, Outlet } from '@tanstack/react-router'
 import { Navbar } from '../components/Navbar'
 import { Footer } from '../components/Footer'
+import { WakeBanner } from '../components/WakeBanner'
 
 export const Route = createRootRoute({
   component: () => (
     <div className="min-h-screen bg-cream flex flex-col">
+      <WakeBanner />
       <Navbar />
       <main className="flex-1 bg-checker bg-cream">
         <Outlet />

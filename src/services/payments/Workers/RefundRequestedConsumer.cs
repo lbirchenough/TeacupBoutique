@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Messaging.Interfaces;
-using Messaging.Workers;
 using Microsoft.EntityFrameworkCore;
 using payments.Data;
 using payments.Entities;
@@ -9,18 +8,17 @@ using Stripe;
 namespace payments.Workers;
 
 public class RefundRequestedConsumer(
-    IConfiguration configuration,
     IServiceScopeFactory scopeFactory,
     IMessagePublisher publisher,
-    ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+    ILogger<RefundRequestedConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "payments.refund-requested";
-    public override string RoutingKey => "orders.RefundRequested";
+    public string QueueName => "payments.refund-requested";
+    public string RoutingKey => "orders.RefundRequested";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("RefundRequested received: {Message}", message);
+        logger.LogDebug("RefundRequested received: {Message}", message);
 
         var payload = JsonSerializer.Deserialize<RefundRequestedPayload>(message);
         if (payload is null) return;
@@ -33,7 +31,7 @@ public class RefundRequestedConsumer(
 
         if (payment is null)
         {
-            _logger.LogError("No succeeded payment found for order {OrderId} — cannot refund", payload.OrderId);
+            logger.LogError("No succeeded payment found for order {OrderId} — cannot refund", payload.OrderId);
             return;
         }
 
@@ -53,12 +51,12 @@ public class RefundRequestedConsumer(
                 StripeRefundId = refund.Id
             });
             await publisher.PublishAsync("payments.RefundSucceeded", successPayload);
-            _logger.LogInformation("Stripe refund {RefundId} of {Amount} succeeded for order {OrderId}",
+            logger.LogInformation("Stripe refund {RefundId} of {Amount} succeeded for order {OrderId}",
                 refund.Id, payload.Amount, payload.OrderId);
         }
         catch (StripeException ex)
         {
-            _logger.LogError(ex, "Stripe refund of {Amount} failed for order {OrderId}", payload.Amount, payload.OrderId);
+            logger.LogError(ex, "Stripe refund of {Amount} failed for order {OrderId}", payload.Amount, payload.OrderId);
             var failPayload = JsonSerializer.Serialize(new
             {
                 payload.OrderId,

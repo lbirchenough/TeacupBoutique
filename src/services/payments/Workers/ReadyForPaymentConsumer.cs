@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using System.Text.Json;
 using payments.Data;
 using payments.Entities;
 
 namespace payments.Workers;
 
-public class ReadyForPaymentConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class ReadyForPaymentConsumer(IServiceScopeFactory scopeFactory, ILogger<ReadyForPaymentConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "payments.ready-for-payment";
-    public override string RoutingKey => "orders.ReadyForPayment";
+    public string QueueName => "payments.ready-for-payment";
+    public string RoutingKey => "orders.ReadyForPayment";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
         var payload = JsonSerializer.Deserialize<ReadyForPaymentDto>(message);
         if (payload is null) return;
@@ -28,7 +28,7 @@ public class ReadyForPaymentConsumer(IConfiguration configuration, IServiceScope
             Amount = payload.Amount,
         });
         await db.SaveChangesAsync();
-        _logger.LogDebug("Stored pending amount {Amount} for order {OrderId}", payload.Amount, payload.OrderId);
+        logger.LogDebug("Stored pending amount {Amount} for order {OrderId}", payload.Amount, payload.OrderId);
     }
 }
 

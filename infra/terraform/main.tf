@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.0"
+    }
   }
 
   backend "azurerm" {
@@ -21,11 +25,12 @@ provider "azurerm" {
   subscription_id = var.subscription_id
 }
 
+provider "azuread" {}
+
 resource "azurerm_resource_group" "teacupboutique" {
   name     = "${var.project}-rg"
   location = var.location
 }
-
 
 resource "azurerm_log_analytics_workspace" "teacupboutique" {
   name                = "${var.project}-logs"

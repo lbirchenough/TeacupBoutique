@@ -1,17 +1,17 @@
-using Messaging.Workers;
+using Messaging.Interfaces;
 using orders.Interfaces;
 
 namespace orders.Workers;
 
-public class RefundSucceededConsumer(IConfiguration configuration, IServiceScopeFactory scopeFactory, ILoggerFactory loggerFactory)
-    : RabbitMqConsumerBase(configuration, loggerFactory)
+public class RefundSucceededConsumer(IServiceScopeFactory scopeFactory, ILogger<RefundSucceededConsumer> logger)
+    : IMessageConsumer
 {
-    public override string QueueName => "orders.refund-succeeded";
-    public override string RoutingKey => "payments.RefundSucceeded";
+    public string QueueName => "orders.refund-succeeded";
+    public string RoutingKey => "payments.RefundSucceeded";
 
-    public override async Task HandleMessageAsync(string message, CancellationToken ct)
+    public async Task HandleMessageAsync(string message, CancellationToken ct)
     {
-        _logger.LogDebug("RefundSucceeded received: {Message}", message);
+        logger.LogDebug("RefundSucceeded received: {Message}", message);
 
         using var scope = scopeFactory.CreateScope();
         var orderEventService = scope.ServiceProvider.GetRequiredService<IOrderEvent>();

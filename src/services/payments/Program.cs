@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using payments.Data;
 using payments.Entities;
 using payments.Services;
-using Messaging.Interfaces;
-using Messaging.Services;
+using Messaging.DependencyInjection;
+using Messaging.Options;
 using payments.Workers;
 using Stripe;
 
@@ -17,15 +17,31 @@ builder.Services.AddDbContext<PaymentsDbContext>(options =>
 
 StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
 
-builder.Services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
 builder.Services.AddHttpClient<TurnstileService>();
-builder.Services.AddSingleton<IWebhookQueue, RabbitMqWebhookQueue>();
-builder.Services.AddHostedService<PaymentProcessorWorker>();
-builder.Services.AddHostedService<ReadyForPaymentConsumer>();
-builder.Services.AddHostedService<RefundRequestedConsumer>();
+builder.Services.AddConsumer<ReadyForPaymentConsumer>();
+builder.Services.AddConsumer<RefundRequestedConsumer>();
+builder.Services.AddMessaging(builder.Configuration);
+
+// Stripe webhook buffer — separate point-to-point queue, not on the pub/sub bus.
+// Transport toggled by the same Messaging:Provider switch.
+var messagingProvider = builder.Configuration["Messaging:Provider"] ?? MessagingOptions.RabbitMq;
+if (string.Equals(messagingProvider, MessagingOptions.ServiceBus, StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IWebhookQueue, ServiceBusWebhookQueue>();
+    builder.Services.AddHostedService<PaymentProcessorServiceBusWorker>();
+}
+else
+{
+    builder.Services.AddSingleton<IWebhookQueue, RabbitMqWebhookQueue>();
+    builder.Services.AddHostedService<PaymentProcessorWorker>();
+}
 
 
 var app = builder.Build();
+
+// Cheap wake-up endpoint for gateway /api/wake. Returns immediately; the act of
+// receiving the request is what triggers Container Apps to scale 0 -> 1.
+app.MapGet("/health", () => Results.Ok());
 
 if (app.Environment.IsDevelopment())
 {

@@ -10,9 +10,6 @@
 # Claude Code
 .claude/
 
-# TanStack Router generated file
-src/client/src/routeTree.gen.ts
-
 # User-specific files
 *.rsuser
 *.suo
