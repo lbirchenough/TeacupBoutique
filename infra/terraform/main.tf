@@ -11,7 +11,7 @@ terraform {
       version = "~> 3.0"
     }
   }
-
+  // Uses a different resource group than the main tcb-rg so it doesn't get deleted when the main resource group is destroyed. This is important because the state file is stored in this resource group.
   backend "azurerm" {
     resource_group_name  = "tcb-tfstate-rg"
     storage_account_name = "tcbtfstate"
