@@ -58,6 +58,36 @@ variable "mailgun_from_name" {
   default     = "Teacup Boutique"
 }
 
+variable "stripe_secret_key" {
+  type        = string
+  description = "Stripe secret API key used by the payments service."
+  sensitive   = true
+}
+
+variable "stripe_webhook_secret" {
+  type        = string
+  description = "Stripe webhook signing secret used by the payments service."
+  sensitive   = true
+}
+
+variable "turnstile_secret_key" {
+  type        = string
+  description = "Cloudflare Turnstile secret key used by the auth service."
+  sensitive   = true
+}
+
+variable "mailgun_api_key" {
+  type        = string
+  description = "Mailgun API key used by the notifications service."
+  sensitive   = true
+}
+
+variable "cloudinary_url" {
+  type        = string
+  description = "Cloudinary connection URL (cloudinary://key:secret@cloud) used by the inventory service."
+  sensitive   = true
+}
+
 variable "github_owner" {
   type        = string
   description = "GitHub repository owner allowed to authenticate to Azure using OIDC."

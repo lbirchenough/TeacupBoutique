@@ -26,10 +26,6 @@ resource "azurerm_postgresql_flexible_server" "teacupboutique" {
     password_auth_enabled = true
   }
 
-  lifecycle {
-    prevent_destroy = true
-  }
-
   depends_on = [azurerm_private_dns_zone_virtual_network_link.postgres]
 }
 
@@ -39,8 +35,4 @@ resource "azurerm_postgresql_flexible_server_database" "dbs" {
   server_id = azurerm_postgresql_flexible_server.teacupboutique.id
   charset   = "UTF8"
   collation = "en_US.utf8"
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }

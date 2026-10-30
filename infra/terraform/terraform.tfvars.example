@@ -2,3 +2,10 @@
 # terraform.tfvars is gitignored.
 
 subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# Secrets issued by external providers. Terraform writes these into Key Vault.
+stripe_secret_key     = "sk_test_..."
+stripe_webhook_secret = "whsec_..."
+turnstile_secret_key  = "0x..."
+mailgun_api_key       = "..."
+cloudinary_url        = "cloudinary://<api_key>:<api_secret>@<cloud_name>"
