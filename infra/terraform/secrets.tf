@@ -1,6 +1,7 @@
 # Generated secrets — Terraform creates strong random values and writes them to Key Vault.
 # Values only exist in Terraform state (encrypted in Azure Storage) and Key Vault.
-# Externally-provided secrets (Stripe, Mailgun, Turnstile) are set manually via `az keyvault secret set`.
+# Externally-provided secrets (Stripe, Mailgun, Turnstile, Cloudinary) come from sensitive
+# variables in terraform.tfvars — see azurerm_key_vault_secret.external below.
 
 resource "random_password" "postgres_admin" {
   length           = 32
@@ -66,6 +67,27 @@ resource "azurerm_key_vault_secret" "postgres_connection_strings" {
   for_each     = local.postgres_connection_strings
   name         = "connstr-${each.key}"
   value        = each.value
+  key_vault_id = azurerm_key_vault.teacupboutique.id
+
+  depends_on = [azurerm_role_assignment.kv_admin_self]
+}
+
+# Secrets issued by external providers. Values live in terraform.tfvars (gitignored),
+# so a rebuild recreates them without any manual `az keyvault secret set` step.
+locals {
+  external_secrets = {
+    cloudinary-url        = var.cloudinary_url
+    mailgun-api-key       = var.mailgun_api_key
+    stripe-secret-key     = var.stripe_secret_key
+    stripe-webhook-secret = var.stripe_webhook_secret
+    turnstile-secret-key  = var.turnstile_secret_key
+  }
+}
+
+resource "azurerm_key_vault_secret" "external" {
+  for_each     = nonsensitive(toset(keys(local.external_secrets)))
+  name         = each.key
+  value        = local.external_secrets[each.key]
   key_vault_id = azurerm_key_vault.teacupboutique.id
 
   depends_on = [azurerm_role_assignment.kv_admin_self]

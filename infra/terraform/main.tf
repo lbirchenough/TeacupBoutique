@@ -10,6 +10,14 @@ terraform {
       source  = "hashicorp/azuread"
       version = "~> 3.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
   }
   // Uses a different resource group than the main tcb-rg so it doesn't get deleted when the main resource group is destroyed. This is important because the state file is stored in this resource group.
   backend "azurerm" {
@@ -26,6 +34,11 @@ provider "azurerm" {
 }
 
 provider "azuread" {}
+
+# Authenticates with the GITHUB_TOKEN env var: `export GITHUB_TOKEN=$(gh auth token)`.
+provider "github" {
+  owner = var.github_owner
+}
 
 resource "azurerm_resource_group" "teacupboutique" {
   name     = "${var.project}-rg"

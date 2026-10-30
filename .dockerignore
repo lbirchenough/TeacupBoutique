@@ -28,3 +28,8 @@ README.md
 !.git/config
 !.git/packed-refs
 !.git/refs/heads/**
+# Terraform (providers are large and tfvars/state hold secrets)
+infra
+**/.terraform
+**/*.tfvars
+**/*.tfstate*

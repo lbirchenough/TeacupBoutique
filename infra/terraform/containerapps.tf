@@ -2,14 +2,14 @@ locals {
   container_app_identity_name = "${var.project}-ca-identity"
   servicebus_fqdn             = "${azurerm_servicebus_namespace.teacupboutique.name}.servicebus.windows.net"
 
-  # These are intentionally not Terraform-managed because the values come from
-  # external providers. Create them before applying the Container Apps.
+  # Externally-issued secrets (values from terraform.tfvars, see secrets.tf).
+  # Versionless IDs so apps always pick up the latest secret version.
   external_secret_ids = {
-    cloudinary_url        = "${azurerm_key_vault.teacupboutique.vault_uri}secrets/cloudinary-url"
-    mailgun_api_key       = "${azurerm_key_vault.teacupboutique.vault_uri}secrets/mailgun-api-key"
-    stripe_secret_key     = "${azurerm_key_vault.teacupboutique.vault_uri}secrets/stripe-secret-key"
-    stripe_webhook_secret = "${azurerm_key_vault.teacupboutique.vault_uri}secrets/stripe-webhook-secret"
-    turnstile_secret_key  = "${azurerm_key_vault.teacupboutique.vault_uri}secrets/turnstile-secret-key"
+    cloudinary_url        = azurerm_key_vault_secret.external["cloudinary-url"].versionless_id
+    mailgun_api_key       = azurerm_key_vault_secret.external["mailgun-api-key"].versionless_id
+    stripe_secret_key     = azurerm_key_vault_secret.external["stripe-secret-key"].versionless_id
+    stripe_webhook_secret = azurerm_key_vault_secret.external["stripe-webhook-secret"].versionless_id
+    turnstile_secret_key  = azurerm_key_vault_secret.external["turnstile-secret-key"].versionless_id
   }
 
   service_container_apps = {
@@ -370,6 +370,7 @@ resource "azurerm_container_app" "services" {
     azurerm_role_assignment.container_apps_servicebus_receiver,
     azurerm_servicebus_queue.queues,
     azurerm_servicebus_queue.stripe_webhook,
+    terraform_data.seed_images,
   ]
 
   # Image is managed by the GitHub Actions deploy pipeline (az containerapp
@@ -477,6 +478,7 @@ resource "azurerm_container_app" "gateway" {
     azurerm_role_assignment.container_apps_acr_pull,
     azurerm_role_assignment.container_apps_kv_secrets,
     azurerm_container_app.services,
+    terraform_data.seed_images,
   ]
 
   # Image is managed by the GitHub Actions deploy pipeline (az containerapp
@@ -558,6 +560,7 @@ resource "azurerm_container_app_job" "migrations" {
   depends_on = [
     azurerm_role_assignment.container_apps_acr_pull,
     azurerm_role_assignment.container_apps_kv_secrets,
+    terraform_data.seed_images,
   ]
 
   # Image is managed by the GitHub Actions deploy pipeline (az containerapp
