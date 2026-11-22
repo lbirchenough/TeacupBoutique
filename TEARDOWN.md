@@ -20,12 +20,18 @@ export GITHUB_TOKEN=$(gh auth token)  # lets Terraform write the GitHub Actions 
    ```bash
    gh workflow disable "Deploy V2 to Azure"
    ```
-2. In the Stripe dashboard, **disable** (don't delete) the webhook endpoint for `https://tcbapi.lbirchen.com`. Deleting it would issue a new signing secret on rebuild.
+2. In Stripe (Developers → Workbench → Webhooks), **disable** (don't delete) the `elegant-jubilee` endpoint (`https://tcbapi.lbirchen.com/webhooks/stripe`). Deleting it would issue a new signing secret, and `stripe_webhook_secret` in `terraform.tfvars` would no longer match.
 3. Destroy:
    ```bash
    terraform destroy
    ```
-   Takes ~20–30 minutes (the Container Apps environment is slow to delete). If it errors on the Postgres subnet or the Container Apps environment, wait a few minutes and run it again.
+   Takes ~30–40 minutes (the Container Apps environment alone took ~25). If it errors on the Postgres subnet or the Container Apps environment, wait a few minutes and run it again.
+
+   If it sits on `azurerm_resource_group.teacupboutique` for minutes, check for resources Azure created on its own (e.g. a `workspacetcbrg…` Log Analytics workspace) — Terraform won't delete a group containing resources it doesn't manage:
+   ```bash
+   az resource list -g tcb-rg -o table
+   az monitor log-analytics workspace delete -g tcb-rg -n <name> --force true --yes
+   ```
 
 **All database data is lost.** Postgres has no `prevent_destroy` on purpose.
 
@@ -48,7 +54,7 @@ Afterwards only `tcb-tfstate-rg` remains (a storage account, cents per month).
    ```
    The backend apps may restart a few times before the migrations finish — that's expected.
 3. Do the [custom domains](#custom-domains-manual) steps.
-4. Re-enable the Stripe webhook endpoint.
+4. Re-enable the Stripe webhook endpoint, then use **Send test event** on it and check it gets a `200`. A `403` means Cloudflare is challenging Stripe (Bot Fight Mode / security level) — add a WAF skip rule for `/webhooks/stripe` on `tcbapi.lbirchen.com`.
 
 The admin password is in Key Vault: `az keyvault secret show --vault-name tcb-kv -n admin-seed-password --query value -o tsv`.
 
